@@ -60,7 +60,7 @@ AI prediction platform with 3D visualization capabilities.
 - One Claude session per worktree
 - Run 3-5 parallel sessions for independent tasks
 - Always branch from `main`
-- Naming: `feature-*`, `bugfix-*`, `refactor-*`
+- Naming: `feature-*`, `bugfix-*`, `refactor-*`, `docs-*`, `test-*`
 
 ## Corrections Log
 

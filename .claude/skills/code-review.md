@@ -11,11 +11,18 @@ Review staged changes against CLAUDE.md conventions and security best practices.
 
 1. Read `CLAUDE.md` to load current project conventions.
 
-2. Run `git diff --cached` to get staged changes.
+2. Run ruff on changed Python files:
+   ```bash
+   ruff check --diff $(git diff --cached --name-only --diff-filter=d -- '*.py')
+   ruff format --check $(git diff --cached --name-only --diff-filter=d -- '*.py')
+   ```
+   Report any linter/formatter violations as **BLOCK** severity.
 
-3. If nothing is staged, run `git diff` and review unstaged changes instead.
+3. Run `git diff --cached` to get staged changes.
 
-4. Check each changed file against these criteria:
+4. If nothing is staged, run `git diff` and review unstaged changes instead.
+
+5. Check each changed file against these criteria:
 
    **Conventions (from CLAUDE.md):**
    - Type hints on all function signatures
@@ -38,7 +45,7 @@ Review staged changes against CLAUDE.md conventions and security best practices.
    - Functions under 50 lines
    - Clear naming (no abbreviations)
 
-5. Report findings grouped by severity:
+6. Report findings grouped by severity:
    - **BLOCK:** Must fix before merge (security issues, convention violations)
    - **WARN:** Should fix (code quality, minor issues)
    - **NOTE:** Optional improvements
