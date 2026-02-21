@@ -13,19 +13,18 @@ RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies
-COPY requirements.txt .
+COPY neuropredict_ai/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy backend code
-COPY core/ core/
-COPY models/ models/
-COPY main.py .
+COPY neuropredict_ai/core/ core/
+COPY neuropredict_ai/main.py .
 
 # Build frontend
-COPY frontend/package.json frontend/package-lock.json frontend/
+COPY neuropredict_ai/frontend/package.json neuropredict_ai/frontend/package-lock.json frontend/
 RUN cd frontend && npm ci
 
-COPY frontend/ frontend/
+COPY neuropredict_ai/frontend/ frontend/
 RUN cd frontend && npm run build
 
 EXPOSE 8000

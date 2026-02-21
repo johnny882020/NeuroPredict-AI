@@ -8,3 +8,10 @@ models/*.pt
 *.egg-info/
 dist/
 build/
+venv/
+node_modules/
+neuropredict_ai/venv/
+neuropredict_ai/frontend/node_modules/
+neuropredict_ai/frontend/dist/
+.DS_Store
+*.log
