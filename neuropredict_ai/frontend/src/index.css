@@ -25,6 +25,10 @@ body {
   min-height: 100vh;
 }
 
+* {
+  box-sizing: border-box;
+}
+
 h1, h2, h3, h4, h5, h6 {
   color: #1a1a2e;
 }
@@ -53,4 +57,26 @@ button:disabled {
 button:focus-visible {
   outline: 2px solid #2563eb;
   outline-offset: 2px;
+}
+
+/* Mobile-friendly file input */
+input[type="file"] {
+  max-width: 100%;
+  font-size: 14px;
+}
+
+/* Ensure tables don't overflow on mobile */
+table {
+  display: block;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 600px) {
+  table {
+    font-size: 13px;
+  }
+  table th, table td {
+    padding: 6px 8px !important;
+  }
 }

@@ -125,7 +125,7 @@ const Viewer3D = ({ meshData, vertexWss, wssRange }) => {
 
     return (
         <div style={{
-            width: '100%', height: '500px', border: '1px solid #e2e8f0',
+            width: '100%', height: 'clamp(280px, 50vw, 500px)', border: '1px solid #e2e8f0',
             borderRadius: 8, overflow: 'hidden', position: 'relative',
             background: '#f1f2f5',
         }}>

@@ -4,3 +4,9 @@
   padding: 1.5rem 2rem;
   text-align: left;
 }
+
+@media (max-width: 600px) {
+  #root {
+    padding: 0.75rem 0.5rem;
+  }
+}

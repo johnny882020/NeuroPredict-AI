@@ -119,36 +119,36 @@ function App() {
     const flowStatusIsRisky = hemo?.flow_status?.toLowerCase().includes('risk');
 
     return (
-        <div style={{ padding: '24px 32px', fontFamily: "'Segoe UI', system-ui, sans-serif", maxWidth: '1500px', margin: '0 auto' }}>
+        <div style={{ padding: '16px', fontFamily: "'Segoe UI', system-ui, sans-serif", maxWidth: '1500px', margin: '0 auto' }}>
             {/* Header */}
-            <div style={{ marginBottom: '24px', borderBottom: '2px solid #e2e8f0', paddingBottom: '16px' }}>
-                <h1 style={{ margin: 0, fontSize: '28px', color: '#1e293b' }}>NeuroPredict AI</h1>
-                <p style={{ margin: '4px 0 0 0', color: '#64748b', fontSize: '14px' }}>Precision Prediction. Dynamic Intervention.</p>
+            <div style={{ marginBottom: '20px', borderBottom: '2px solid #e2e8f0', paddingBottom: '12px' }}>
+                <h1 style={{ margin: 0, fontSize: 'clamp(20px, 5vw, 28px)', color: '#1e293b' }}>NeuroPredict AI</h1>
+                <p style={{ margin: '4px 0 0 0', color: '#64748b', fontSize: '13px' }}>Precision Prediction. Dynamic Intervention.</p>
             </div>
 
             {/* Error banner */}
             {error && (
-                <div style={{ padding: '12px 16px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', marginBottom: '16px', color: '#991b1b', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span>{error}</span>
-                    <button onClick={() => setError(null)} style={{ background: 'none', border: 'none', color: '#991b1b', cursor: 'pointer', fontSize: '18px', padding: '0 4px' }}>x</button>
+                <div style={{ padding: '10px 14px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', marginBottom: '16px', color: '#991b1b', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 13, wordBreak: 'break-word' }}>{error}</span>
+                    <button onClick={() => setError(null)} style={{ background: 'none', border: 'none', color: '#991b1b', cursor: 'pointer', fontSize: '18px', padding: '0 4px', flexShrink: 0 }}>x</button>
                 </div>
             )}
 
-            <div style={{ display: 'flex', gap: '28px', flexWrap: 'wrap', alignItems: 'flex-start' }}>
+            <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap', alignItems: 'flex-start' }}>
                 {/* LEFT COLUMN: Scan Analysis + Clinical */}
-                <div style={{ flex: 1, minWidth: '420px' }}>
+                <div style={{ flex: 1, minWidth: 0, width: '100%' }}>
 
                     {/* Upload Section */}
                     <div style={{ ...CARD, marginBottom: '20px' }}>
                         <h3 style={{ margin: '0 0 12px 0', fontSize: '16px', color: '#1e40af' }}>1. Automated Aneurysm Analysis</h3>
-                        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
                             <input type="file" onChange={(e) => setFile(e.target.files[0])} accept="*"
-                                style={{ fontSize: '14px', color: '#475569' }} />
+                                style={{ fontSize: '14px', color: '#475569', minWidth: 0, flex: '1 1 180px' }} />
                             <button onClick={handleUpload} disabled={!file || loading}
                                 style={{
                                     background: (!file || loading) ? '#94a3b8' : '#2563eb',
                                     color: '#fff', border: 'none', fontWeight: '600',
-                                    padding: '8px 20px', whiteSpace: 'nowrap',
+                                    padding: '8px 20px', whiteSpace: 'nowrap', width: 'auto',
                                 }}>
                                 {loading ? "Processing..." : "Analyze CTA Scan"}
                             </button>
@@ -198,7 +198,7 @@ function App() {
                                     {morph && (
                                         <>
                                             <h4 style={{ margin: '0 0 8px 0', fontSize: 13, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Morphology</h4>
-                                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 8, marginBottom: 16 }}>
+                                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 8, marginBottom: 16 }}>
                                                 <MetricCard label="Max Diameter" value={morph.maximum_3d_diameter_mm} unit="mm" />
                                                 <MetricCard label="Volume" value={morph.volume_mm3 ?? mesh?.volume_mm3} unit="mm3" />
                                                 <MetricCard label="Surface Area" value={morph.surface_area_mm2 ?? mesh?.surface_area_mm2} unit="mm2" />
@@ -214,7 +214,7 @@ function App() {
                                     {hemo && (
                                         <>
                                             <h4 style={{ margin: '0 0 8px 0', fontSize: 13, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Hemodynamics</h4>
-                                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 8, marginBottom: 16 }}>
+                                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 8, marginBottom: 16 }}>
                                                 <MetricCard label="Mean WSS" value={hemo.mean_wss_pa} unit="Pa" />
                                                 <MetricCard label="Max WSS" value={hemo.max_wss_pa} unit="Pa" />
                                                 <MetricCard label="Min WSS" value={hemo.min_wss_pa} unit="Pa" />
@@ -224,7 +224,7 @@ function App() {
                                             </div>
 
                                             {hemo.flow_direction && (
-                                                <div style={{ padding: '8px 12px', background: '#f0f9ff', borderRadius: 6, border: '1px solid #bae6fd', fontSize: 13, color: '#0c4a6e' }}>
+                                                <div style={{ padding: '8px 12px', background: '#f0f9ff', borderRadius: 6, border: '1px solid #bae6fd', fontSize: 13, color: '#0c4a6e', wordBreak: 'break-all' }}>
                                                     <strong>Flow Direction:</strong>{' '}
                                                     [{hemo.flow_direction.map(v => v.toFixed(3)).join(', ')}]
                                                 </div>
@@ -247,22 +247,22 @@ function App() {
                             {riskData && (
                                 <div style={{ ...CARD, marginBottom: '20px', background: '#f0f9ff', borderColor: '#bae6fd' }}>
                                     <h4 style={{ margin: '0 0 10px 0', color: '#0c4a6e' }}>Risk Assessment</h4>
-                                    <p style={{ color: '#334155' }}><strong>UIATS Score:</strong> {riskData.uiats_assessment.uiats_score}</p>
-                                    <p style={{ color: '#334155' }}><strong>UIATS Recommendation:</strong> {riskData.uiats_assessment.uiats_recommendation}</p>
-                                    <p style={{ color: '#334155' }}><strong>AI Rupture Probability:</strong> <span style={{ fontWeight: '700', color: '#dc2626' }}>{(riskData.ai_rupture_probability * 100).toFixed(2)}%</span></p>
+                                    <p style={{ color: '#334155', fontSize: 14 }}><strong>UIATS Score:</strong> {riskData.uiats_assessment.uiats_score}</p>
+                                    <p style={{ color: '#334155', fontSize: 14 }}><strong>UIATS Recommendation:</strong> {riskData.uiats_assessment.uiats_recommendation}</p>
+                                    <p style={{ color: '#334155', fontSize: 14 }}><strong>AI Rupture Probability:</strong> <span style={{ fontWeight: '700', color: '#dc2626' }}>{(riskData.ai_rupture_probability * 100).toFixed(2)}%</span></p>
                                 </div>
                             )}
 
                             {/* Treatment Simulation */}
                             <div style={{ ...CARD, marginBottom: '20px' }}>
                                 <h3 style={{ margin: '0 0 12px 0', fontSize: '16px', color: '#1e40af' }}>3. Treatment Simulation</h3>
-                                <div style={{ display: 'flex', gap: '10px' }}>
+                                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                                     <button onClick={() => handleSimulation('flow_diverter')}
-                                        style={{ background: '#7c3aed', color: '#fff', border: 'none', fontWeight: '600' }}>
+                                        style={{ background: '#7c3aed', color: '#fff', border: 'none', fontWeight: '600', flex: '1 1 auto', minWidth: 'fit-content' }}>
                                         Simulate Flow Diverter
                                     </button>
                                     <button onClick={() => handleSimulation('surgical_clip')}
-                                        style={{ background: '#059669', color: '#fff', border: 'none', fontWeight: '600' }}>
+                                        style={{ background: '#059669', color: '#fff', border: 'none', fontWeight: '600', flex: '1 1 auto', minWidth: 'fit-content' }}>
                                         Simulate Surgical Clip
                                     </button>
                                 </div>
@@ -271,10 +271,10 @@ function App() {
                             {simulation && (
                                 <div style={{ ...CARD, marginBottom: '20px', background: '#f0fdf4', borderColor: '#bbf7d0' }}>
                                     <h4 style={{ margin: '0 0 10px 0', color: '#166534' }}>Post-Treatment Hemodynamics</h4>
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                                        <p style={{ margin: 0, color: '#334155' }}><strong>Mean WSS:</strong> {simulation.mean_wss_pa} Pa</p>
-                                        <p style={{ margin: 0, color: '#334155' }}><strong>Max WSS:</strong> {simulation.max_wss_pa} Pa</p>
-                                        <p style={{ margin: 0, color: '#334155' }}><strong>OSI:</strong> {simulation.mean_osi}</p>
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '8px' }}>
+                                        <p style={{ margin: 0, color: '#334155', fontSize: 14 }}><strong>Mean WSS:</strong> {simulation.mean_wss_pa} Pa</p>
+                                        <p style={{ margin: 0, color: '#334155', fontSize: 14 }}><strong>Max WSS:</strong> {simulation.max_wss_pa} Pa</p>
+                                        <p style={{ margin: 0, color: '#334155', fontSize: 14 }}><strong>OSI:</strong> {simulation.mean_osi}</p>
                                     </div>
                                     <p style={{ marginTop: '10px', padding: '10px', background: '#dcfce7', borderRadius: '6px', color: '#166534', fontSize: '14px' }}>
                                         <strong>Outcome:</strong> {simulation.clinical_outcome}
@@ -292,7 +292,7 @@ function App() {
                 </div>
 
                 {/* RIGHT COLUMN: MARTA Score */}
-                <div style={{ flex: 1, minWidth: '420px' }}>
+                <div style={{ flex: 1, minWidth: 0, width: '100%' }}>
                     <div style={{ ...CARD, marginBottom: '20px' }}>
                         <h3 style={{ margin: '0 0 4px 0', fontSize: '16px', color: '#1e40af' }}>MARTA Risk Assessment</h3>
                         <p style={{ color: '#64748b', fontSize: '13px', margin: '0 0 16px 0' }}>
@@ -312,14 +312,14 @@ function App() {
                             <h4 style={{ margin: '0 0 12px 0', fontSize: '18px', color: '#1e293b' }}>MARTA Results</h4>
 
                             {/* EVT vs NT */}
-                            <div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
+                            <div style={{ display: 'flex', gap: '12px', marginBottom: '16px', flexWrap: 'wrap' }}>
                                 <div style={{
-                                    ...CARD, flex: 1,
+                                    ...CARD, flex: '1 1 140px', minWidth: 0,
                                     background: RISK_BG[martaResult.evt_risk_category],
                                     borderColor: RISK_BORDER[martaResult.evt_risk_category],
                                 }}>
                                     <h5 style={{ margin: '0 0 6px 0', color: '#1e40af', fontSize: '14px' }}>MARTA-EVT</h5>
-                                    <p style={{ fontSize: '32px', fontWeight: '700', margin: '4px 0', color: '#1e293b' }}>
+                                    <p style={{ fontSize: 'clamp(24px, 5vw, 32px)', fontWeight: '700', margin: '4px 0', color: '#1e293b' }}>
                                         {martaResult.details.evt_probability_pct}%
                                     </p>
                                     <span style={{
@@ -333,12 +333,12 @@ function App() {
                                 </div>
 
                                 <div style={{
-                                    ...CARD, flex: 1,
+                                    ...CARD, flex: '1 1 140px', minWidth: 0,
                                     background: RISK_BG[martaResult.nt_risk_category],
                                     borderColor: RISK_BORDER[martaResult.nt_risk_category],
                                 }}>
                                     <h5 style={{ margin: '0 0 6px 0', color: '#7c3aed', fontSize: '14px' }}>MARTA-NT</h5>
-                                    <p style={{ fontSize: '32px', fontWeight: '700', margin: '4px 0', color: '#1e293b' }}>
+                                    <p style={{ fontSize: 'clamp(24px, 5vw, 32px)', fontWeight: '700', margin: '4px 0', color: '#1e293b' }}>
                                         {martaResult.details.nt_probability_pct}%
                                     </p>
                                     <span style={{
@@ -355,14 +355,14 @@ function App() {
                             {/* Treatment Recommendation */}
                             <div style={{ ...CARD, marginBottom: '16px', background: '#f0fdf4', borderColor: '#bbf7d0' }}>
                                 <h5 style={{ margin: '0 0 8px 0', color: '#166534', fontSize: '15px' }}>Recommended Treatment Approach</h5>
-                                <p style={{ margin: 0, fontSize: '15px', color: '#334155' }}>{martaResult.recommended_treatment}</p>
+                                <p style={{ margin: 0, fontSize: '14px', color: '#334155' }}>{martaResult.recommended_treatment}</p>
                             </div>
 
                             {/* Best EVT Device */}
                             {martaResult.details.best_evt_approach && (
                                 <div style={{ ...CARD, marginBottom: '16px', background: '#f5f3ff', borderColor: '#ddd6fe' }}>
                                     <h5 style={{ margin: '0 0 8px 0', color: '#5b21b6', fontSize: '15px' }}>Recommended EVT Device</h5>
-                                    <p style={{ margin: 0, fontSize: '15px', color: '#334155' }}>
+                                    <p style={{ margin: 0, fontSize: '14px', color: '#334155', wordBreak: 'break-word' }}>
                                         <strong>{martaResult.details.best_evt_approach}</strong>
                                         {' \u2014 '}
                                         <span style={{ color: RISK_COLORS[martaResult.details.evt_approach_comparison?.[0]?.risk_category || 'Moderate'] }}>
@@ -374,42 +374,44 @@ function App() {
 
                             {/* EVT Comparison Table */}
                             {martaResult.details.evt_approach_comparison && (
-                                <div style={CARD}>
+                                <div style={{ ...CARD, overflow: 'hidden' }}>
                                     <h5 style={{ margin: '0 0 12px 0', color: '#1e40af', fontSize: '15px' }}>EVT Approach Comparison</h5>
-                                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
-                                        <thead>
-                                            <tr style={{ borderBottom: '2px solid #e2e8f0' }}>
-                                                <th style={{ textAlign: 'left', padding: '8px 10px', color: '#64748b', fontWeight: '600' }}>Approach</th>
-                                                <th style={{ textAlign: 'right', padding: '8px 10px', color: '#64748b', fontWeight: '600' }}>Risk %</th>
-                                                <th style={{ textAlign: 'center', padding: '8px 10px', color: '#64748b', fontWeight: '600' }}>Category</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {martaResult.details.evt_approach_comparison.map((row, i) => (
-                                                <tr key={row.approach} style={{
-                                                    borderBottom: '1px solid #f1f5f9',
-                                                    background: i === 0 ? '#f0fdf4' : (i % 2 === 0 ? '#f8fafc' : '#ffffff'),
-                                                }}>
-                                                    <td style={{ padding: '8px 10px', color: '#334155', fontWeight: i === 0 ? '600' : '400' }}>
-                                                        {i === 0 && <span style={{ color: '#16a34a', marginRight: '4px' }}>*</span>}{row.label}
-                                                    </td>
-                                                    <td style={{ textAlign: 'right', padding: '8px 10px', fontWeight: '600', color: '#1e293b' }}>
-                                                        {row.probability_pct}%
-                                                    </td>
-                                                    <td style={{ textAlign: 'center', padding: '8px 10px' }}>
-                                                        <span style={{
-                                                            padding: '2px 10px', borderRadius: '20px', fontSize: '12px', fontWeight: '600',
-                                                            background: RISK_COLORS[row.risk_category] + '15',
-                                                            color: RISK_COLORS[row.risk_category],
-                                                            border: `1px solid ${RISK_COLORS[row.risk_category]}30`,
-                                                        }}>
-                                                            {row.risk_category}
-                                                        </span>
-                                                    </td>
+                                    <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px', minWidth: '300px' }}>
+                                            <thead>
+                                                <tr style={{ borderBottom: '2px solid #e2e8f0' }}>
+                                                    <th style={{ textAlign: 'left', padding: '8px 10px', color: '#64748b', fontWeight: '600' }}>Approach</th>
+                                                    <th style={{ textAlign: 'right', padding: '8px 10px', color: '#64748b', fontWeight: '600' }}>Risk %</th>
+                                                    <th style={{ textAlign: 'center', padding: '8px 10px', color: '#64748b', fontWeight: '600' }}>Category</th>
                                                 </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
+                                            </thead>
+                                            <tbody>
+                                                {martaResult.details.evt_approach_comparison.map((row, i) => (
+                                                    <tr key={row.approach} style={{
+                                                        borderBottom: '1px solid #f1f5f9',
+                                                        background: i === 0 ? '#f0fdf4' : (i % 2 === 0 ? '#f8fafc' : '#ffffff'),
+                                                    }}>
+                                                        <td style={{ padding: '8px 10px', color: '#334155', fontWeight: i === 0 ? '600' : '400' }}>
+                                                            {i === 0 && <span style={{ color: '#16a34a', marginRight: '4px' }}>*</span>}{row.label}
+                                                        </td>
+                                                        <td style={{ textAlign: 'right', padding: '8px 10px', fontWeight: '600', color: '#1e293b' }}>
+                                                            {row.probability_pct}%
+                                                        </td>
+                                                        <td style={{ textAlign: 'center', padding: '8px 10px' }}>
+                                                            <span style={{
+                                                                padding: '2px 10px', borderRadius: '20px', fontSize: '12px', fontWeight: '600',
+                                                                background: RISK_COLORS[row.risk_category] + '15',
+                                                                color: RISK_COLORS[row.risk_category],
+                                                                border: `1px solid ${RISK_COLORS[row.risk_category]}30`,
+                                                            }}>
+                                                                {row.risk_category}
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
                                 </div>
                             )}
                         </div>

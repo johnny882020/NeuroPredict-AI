@@ -106,9 +106,9 @@ const Checkbox = ({ checked, onChange, label }) => (
 );
 
 const SelectField = ({ label, value, onChange, options }) => (
-    <div style={FIELD_ROW}>
-        <span style={{ minWidth: '140px', fontSize: '14px', color: '#475569', fontWeight: '500' }}>{label}</span>
-        <select style={SELECT_STYLE} value={value} onChange={onChange}>
+    <div style={{ ...FIELD_ROW, flexWrap: 'wrap' }}>
+        <span style={{ minWidth: '100px', fontSize: '14px', color: '#475569', fontWeight: '500', flexShrink: 0 }}>{label}</span>
+        <select style={{ ...SELECT_STYLE, flex: '1 1 140px' }} value={value} onChange={onChange}>
             {options.map(o => (
                 <option key={o.value} value={o.value}>{o.label}</option>
             ))}
@@ -134,7 +134,7 @@ const MARTAForm = ({ martaData, setMartaData, onSubmit, loading }) => {
     };
 
     return (
-        <div style={{ maxWidth: '520px' }}>
+        <div style={{ maxWidth: '520px', width: '100%' }}>
             {/* Patient / Baseline */}
             <div style={SECTION_STYLE}>
                 <h4 style={SECTION_TITLE}>Patient / Baseline</h4>
