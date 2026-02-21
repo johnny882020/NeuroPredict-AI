@@ -1,6 +1,9 @@
 import numpy as np
-import nibabel as nib
-import io
+
+try:
+    import nibabel as nib
+except ImportError:
+    nib = None
 
 def load_nifti_from_bytes(file_bytes: bytes) -> np.ndarray:
     """

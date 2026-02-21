@@ -65,10 +65,8 @@ async def analyze_scan(file: UploadFile = File(...)):
     # 1. Preprocess
     preprocessed_volume = process_scan(file_bytes)
 
-    # 2. Segment
-    import torch
-    input_tensor = torch.tensor(preprocessed_volume, dtype=torch.float32)
-    mask = segmentation_model.predict(input_tensor)
+    # 2. Segment (accepts both torch tensors and numpy arrays)
+    mask = segmentation_model.predict(preprocessed_volume)
 
     # Dev mode: if the untrained U-Net produces an empty mask,
     # inject a synthetic aneurysm blob so the rest of the pipeline works.
