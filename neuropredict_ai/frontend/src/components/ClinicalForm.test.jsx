@@ -18,7 +18,7 @@ const defaultClinical = {
     high_risk_location: false,
 };
 
-function Wrapper({ scanData, onSubmit }) {
+function Wrapper({ scanData, onSubmit, disabled }) {
     const [clinical, setClinical] = useState(defaultClinical);
     return (
         <ClinicalForm
@@ -26,6 +26,7 @@ function Wrapper({ scanData, onSubmit }) {
             setClinical={setClinical}
             onSubmit={onSubmit || vi.fn()}
             scanData={scanData}
+            disabled={disabled}
         />
     );
 }
@@ -70,5 +71,17 @@ describe('ClinicalForm', () => {
         render(<Wrapper onSubmit={onSubmit} />);
         fireEvent.click(screen.getByRole('button', { name: /Calculate Risk Scores/i }));
         expect(onSubmit).toHaveBeenCalledTimes(1);
+    });
+
+    it('shows disabled label when disabled prop is true', () => {
+        render(<Wrapper disabled={true} />);
+        expect(screen.getByRole('button', { name: /Upload a scan to enable/i })).toBeInTheDocument();
+    });
+
+    it('does not call onSubmit when button is disabled', () => {
+        const onSubmit = vi.fn();
+        render(<Wrapper onSubmit={onSubmit} disabled={true} />);
+        fireEvent.click(screen.getByRole('button', { name: /Upload a scan to enable/i }));
+        expect(onSubmit).not.toHaveBeenCalled();
     });
 });

@@ -57,4 +57,15 @@ describe('App', () => {
         // Without a file, the DICOM tab shows a no-file message and the upload input
         expect(screen.getByText(/No file loaded/i)).toBeInTheDocument();
     });
+
+    it('header does not show Fallback Mode or AUC badges', () => {
+        render(<App />);
+        expect(screen.queryByText(/Fallback Mode/i)).not.toBeInTheDocument();
+        expect(screen.queryByText(/AUC 0\.916/i)).not.toBeInTheDocument();
+    });
+
+    it('footer does not contain RSNA 2025 Pipeline text', () => {
+        render(<App />);
+        expect(screen.queryByText(/RSNA 2025 Pipeline/i)).not.toBeInTheDocument();
+    });
 });

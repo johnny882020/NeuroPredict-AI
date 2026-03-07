@@ -32,7 +32,7 @@ import uvicorn
 app = FastAPI(
     title="NeuroPredict AI",
     description="Precision Prediction. Dynamic Intervention.",
-    version="2.0.0",
+    version="2.1.0",
 )
 
 FRONTEND_DIR = Path(__file__).parent / "frontend" / "dist"

@@ -139,3 +139,42 @@ def test_simulate_treatment_surgical_clip():
     assert "mean_wss_pa" in data
     assert "mean_osi" in data
     assert "clinical_outcome" in data
+
+
+# ── /marta_assessment ─────────────────────────────────────────────────────────
+
+_MARTA_PAYLOAD = {
+    "patient": {
+        "age": 60,
+        "sex": "F",
+        "smoking": False,
+        "hypertension": True,
+    },
+    "aneurysm": {
+        "location": "MCA",
+        "size": "medium",
+        "morphology": "regular_saccular",
+        "neck_geometry": "sidewall",
+        "neck_surface": "less_than_half",
+    },
+}
+
+
+def test_marta_assessment_returns_expected_fields():
+    """Smoke-test that /marta_assessment returns all MARTAResult fields."""
+    resp = client.post("/marta_assessment", json=_MARTA_PAYLOAD)
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "evt_probability" in data
+    assert "nt_probability" in data
+    assert "evt_risk_category" in data
+    assert "nt_risk_category" in data
+    assert "recommended_treatment" in data
+    assert 0.0 <= data["evt_probability"] <= 1.0
+    assert 0.0 <= data["nt_probability"] <= 1.0
+
+
+def test_marta_assessment_invalid_payload_returns_422():
+    """Missing required aneurysm fields returns 422 validation error."""
+    resp = client.post("/marta_assessment", json={"patient": {"age": 50, "sex": "M"}})
+    assert resp.status_code == 422

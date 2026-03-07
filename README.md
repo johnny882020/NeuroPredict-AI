@@ -7,7 +7,7 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110+-green)](https://fastapi.tiangolo.com)
 [![React](https://img.shields.io/badge/React-19-61dafb)](https://react.dev)
 [![RSNA 2025](https://img.shields.io/badge/RSNA%202025-AUC%200.916-orange)](#rsna-2025-pipeline)
-[![Tests](https://img.shields.io/badge/Tests-72%20backend%20%7C%2024%20frontend-brightgreen)](#testing)
+[![Tests](https://img.shields.io/badge/Tests-74%20backend%20%7C%2028%20frontend-brightgreen)](#testing)
 
 ---
 
@@ -290,13 +290,14 @@ neuropredict_ai/
 │   └── test_data_loader.py      # 1 HU thresholding test
 └── frontend/
     ├── src/
-    │   ├── App.jsx              # 5-tab dashboard, all state + handlers
-    │   ├── api.js               # Axios API layer (uploadScan, predictRisk, ...)
+    │   ├── App.jsx              # 5-tab dashboard, all state + handlers; dark/light toggle
+    │   ├── theme.js             # DARK/LIGHT token objects + ThemeCtx React context
+    │   ├── api.js               # Axios API layer; 503 interceptor for Render sleep message
     │   └── components/
     │       ├── DicomViewer.jsx      # Cornerstone.js 3-plane MPR (lazy-loaded); accepts ZIP or .dcm files; Length/Angle/ROI/Probe tools
-    │       ├── ClinicalForm.jsx     # PHASES + UIATS input form
-    │       ├── ClinicalDecision.jsx # Accept/Modify/Override decision workflow
-    │       ├── MARTAForm.jsx        # MARTA procedural risk input form
+    │       ├── ClinicalForm.jsx     # PHASES + UIATS input form; disabled={!scanData} pre-scan
+    │       ├── ClinicalDecision.jsx # Accept/Modify/Override/Bypass decision workflow + audit trail
+    │       ├── MARTAForm.jsx        # MARTA procedural risk input form; fully ThemeCtx reactive
     │       └── Viewer3D.jsx         # VTK.js 3D mesh + per-vertex WSS heat map
     └── vite.config.js           # Manual chunks: vtk | cornerstone | cornerstone-loader
 
@@ -434,31 +435,71 @@ Risk categories: **Low** (< 5%) | **Moderate** (5–15%) | **High** (>= 15%)
 
 ---
 
+## Design System
+
+The UI follows a **dark medical workstation** aesthetic (PACS-style). A `theme.js` module exports `DARK` and `LIGHT` token objects and a `ThemeCtx` React context. All components call `const T = useContext(ThemeCtx)` — no prop drilling required.
+
+### Color Tokens
+
+| Token | Dark | Light | Usage |
+|-------|------|-------|-------|
+| `T.bg` | `#080c14` | `#f0f4f8` | Page background |
+| `T.surface` | `#0e1420` | `#ffffff` | Input backgrounds, nested surfaces |
+| `T.panel` | `#141b2d` | `#ffffff` | Card/panel backgrounds |
+| `T.border` | `#1e2d48` | `#c8d8ec` | Panel borders |
+| `T.textPri` | `#e8edf5` | `#0f172a` | Primary text |
+| `T.textSec` | `#5d7a9e` | `#334d6a` | Secondary/label text |
+| `T.cyan` | `#06b6d4` | `#0891b2` | Section titles, interactive accents |
+| `T.orange` | `#f97316` | `#ea6c00` | Critical findings, high-probability alerts |
+| `T.green` | `#10b981` | `#059669` | Normal/negative findings |
+| `T.red` | `#ef4444` | `#dc2626` | High-risk indicators |
+| `T.purple` | `#a855f7` | `#9333ea` | Treatment/EVT device highlights |
+| `T.blue` | `#3b82f6` | `#2563eb` | Location probability bars |
+
+### Layout
+
+- **Sticky header** — logo, tagline ("We find the aneurysm before it finds you."), tab navigation, dark/light toggle
+- **5-tab navigation** — DICOM View / CTA Analysis / Risk & Clinical / MARTA Assessment / Treatment Sim
+- **Two-column grid** — left sidebar (controls/metrics) + right main panel (3D viewer, results)
+- **Footer** — `© 2026 NeuroPredict AI · For research use only` · `v2.1 · Not for clinical diagnosis`
+
+### Design Rules
+
+- Section titles use `T.cyan` + uppercase tracking (`SectionHeader` component)
+- Critical findings (aneurysm detected, high WSS) use `T.orange` with `T.orangeDim` background tint
+- Probability bars: highest location = `T.orange`, others = `T.blue`; width scaled to max
+- Primary buttons: `linear-gradient(135deg, T.cyan, T.blue)`; secondary: transparent with border
+- `Dot` component for status indicators with CSS `box-shadow` glow
+- `MetricPill` component for all metric values with optional `accent` color
+
+---
+
 ## Testing
 
 ```bash
-# Full backend suite (72 tests)
+# Full backend suite (74 tests)
 cd neuropredict_ai
 pytest tests/ -v
 
-# Full frontend suite (24 tests)
+# Full frontend suite (28 tests)
 cd neuropredict_ai/frontend
 npx vitest run
 
 # Targeted suites
 pytest tests/test_risk_model.py -v      # PHASES/UIATS/synthesis (34 tests)
-pytest tests/test_api.py -v             # API endpoints (9 tests)
+pytest tests/test_api.py -v             # API endpoints (11 tests)
 pytest tests/test_marta_score.py -v     # MARTA models (36 tests)
 npx vitest run src/components/ClinicalDecision.test.jsx   # 9 tests
-npx vitest run src/components/ClinicalForm.test.jsx        # 7 tests
+npx vitest run src/components/ClinicalForm.test.jsx        # 9 tests
+npx vitest run src/App.test.jsx                            # 10 tests
 ```
 
 **Coverage:**
 - **PHASES**: all 6 variable branches, all size tiers (boundary values), score capping at 12, citation/evidence fields
 - **UIATS**: all age/size/morphology buckets, net score thresholds, breakdown dict, evidence fields
 - **Synthesis**: signal combinations, MARTA modality selection (EVT vs NT), disclaimer always present, RSNA rationale inclusion
-- **API**: full schema validation, `rsna_probability` query param, MARTA query params in synthesis rationale, 422 on bad input, exact score/risk value assertions
-- **Frontend**: all 5 tabs navigable, ClinicalDecision 3-state machine (pending/override-input/decided), ClinicalForm scan-data pre-fill, MARTA tab renders form, treatment tab shows gating message without scan
+- **API**: full schema validation, `rsna_probability` query param, MARTA query params in synthesis rationale, 422 on bad input, MARTA field smoke-test, exact score/risk value assertions
+- **Frontend**: all 5 tabs navigable, ClinicalDecision 3-state machine (pending/override-input/decided), ClinicalForm scan-data pre-fill + disabled state, MARTA tab renders form, treatment tab shows gating message without scan, header/footer regression tests (no removed badges)
 
 ---
 
@@ -522,6 +563,12 @@ git submodule update --init --recursive
 - [x] Measurement tools — Length, Angle, Elliptical ROI, HU Probe (v2.1)
 - [x] PHASES score visual bar + UIATS breakdown chips in Risk tab (v2.1)
 - [x] Treatment Sim device cards with clinical context + pre/post comparison table (v2.1)
+- [x] Dark / light mode toggle — full ThemeCtx propagation to all components (v2.1)
+- [x] Physician bypass action + audit trail (Accept / Modify / Override / Bypass) (v2.1)
+- [x] ClinicalForm disabled state with "Upload a scan to enable" before scan upload (v2.1)
+- [x] Treatment Simulation null-guard for empty hemodynamics (fallback mode) (v2.1)
+- [x] Render free-tier 503 sleep message via axios interceptor (v2.1)
+- [x] Backend error handling — structured 500 responses on all prediction endpoints (v2.1)
 - [ ] DICOM crosshair synchronization across 3 planes
 - [ ] PDF export — physician decision + evidence rationale report
 - [ ] Multi-aneurysm session (track multiple lesions per patient encounter)

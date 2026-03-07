@@ -20,7 +20,7 @@ python main.py
 # or
 uvicorn main:app --reload --host 0.0.0.0 --port 8000
 
-# Run all tests (72 tests)
+# Run all tests (74 tests)
 cd neuropredict_ai
 pytest
 
@@ -46,10 +46,10 @@ npm install
 npm run dev        # Dev server (Vite)
 npm run build      # Build to dist/
 npm run lint       # ESLint
-npx vitest run     # Run all tests (24 tests)
-npx vitest run src/App.test.jsx                        # App + tab navigation tests
-npx vitest run src/components/ClinicalForm.test.jsx    # ClinicalForm component tests
-npx vitest run src/components/ClinicalDecision.test.jsx # Decision workflow tests
+npx vitest run     # Run all tests (28 tests)
+npx vitest run src/App.test.jsx                        # App + tab navigation + regression tests (10)
+npx vitest run src/components/ClinicalForm.test.jsx    # ClinicalForm + disabled state tests (9)
+npx vitest run src/components/ClinicalDecision.test.jsx # Decision workflow tests (9)
 ```
 
 ### Docker
@@ -96,9 +96,9 @@ The FastAPI app in `main.py` runs as a single process serving both the API and t
 5. `core/hemodynamics.py` — generates 3D mesh (marching cubes) and simulates hemodynamics (WSS, OSI)
 
 **Other endpoints:**
-- `POST /predict_risk` — `core/risk_model.py`: PHASES + UIATS scoring + synthesis recommendation; accepts optional query params `rsna_probability`, `marta_evt_pct`, `marta_nt_pct`
-- `POST /marta_assessment` — `core/marta_score.py`: MARTA-EVT and MARTA-NT logistic models
-- `POST /simulate_treatment` — `core/hemodynamics.py`: post-treatment hemodynamic simulation (types: `flow_diverter`, `surgical_clip`)
+- `POST /predict_risk` — `core/risk_model.py`: PHASES + UIATS scoring + synthesis recommendation; accepts optional query params `rsna_probability`, `marta_evt_pct`, `marta_nt_pct`; wrapped in `try/except` → `HTTPException(500)` with `detail` on error
+- `POST /marta_assessment` — `core/marta_score.py`: MARTA-EVT and MARTA-NT logistic models; wrapped in `try/except` → `HTTPException(500)` with `detail` on error
+- `POST /simulate_treatment` — `core/hemodynamics.py`: post-treatment hemodynamic simulation (types: `flow_diverter`, `surgical_clip`); uses `baseline_hemodynamics?.mean_wss_pa ?? 4.5` default when hemodynamics unavailable (fallback mode); wrapped in `try/except` → `HTTPException(500)` with `detail` on error
 
 **`POST /predict_risk` response schema:**
 ```json
@@ -173,12 +173,12 @@ React 19 + Vite app. No state management library — uses `useState` hooks in `A
 5. `'treatment'` — Treatment Sim: hemodynamic simulation controls (gated: requires scanData)
 
 **Key components:**
-- `src/api.js` — all API calls via axios; uses `VITE_API_URL` env var (defaults to same-origin)
+- `src/api.js` — all API calls via axios; uses `VITE_API_URL` env var (defaults to same-origin); **axios 503 interceptor** transforms 503 → "Server is starting up — please wait 30 seconds and try again." (Render free-tier sleep message)
 - `src/components/DicomViewer.jsx` — Cornerstone.js DICOM viewer (`React.lazy()`), multi-planar (axial/coronal/sagittal), windowing presets, measurement tools (Length/Angle/ROI/Probe), DICOM metadata panel. Accepts `source` prop: `File` (ZIP), `File[]` (individual `.dcm` files), or `null`
 - `src/components/Viewer3D.jsx` — 3D mesh rendering with VTK.js (`@kitware/vtk.js`)
-- `src/components/ClinicalForm.jsx` — PHASES + UIATS input fields; pre-fills `aneurysm_size_mm` from `scanData.morphology.maximum_3d_diameter_mm`
-- `src/components/ClinicalDecision.jsx` — Doctor-in-the-loop: Accept / Modify / Override with reason; returns `null` when `synthesis` prop is null
-- `src/components/MARTAForm.jsx` — full MARTA assessment form
+- `src/components/ClinicalForm.jsx` — PHASES + UIATS input fields; pre-fills `aneurysm_size_mm` from `scanData.morphology.maximum_3d_diameter_mm`; accepts `disabled` prop — when `disabled={true}` (no scan loaded) button shows "Upload a scan to enable" and is non-interactive
+- `src/components/ClinicalDecision.jsx` — Doctor-in-the-loop: Accept / Modify / Override with reason / Bypass; returns `null` when `synthesis` prop is null
+- `src/components/MARTAForm.jsx` — full MARTA assessment form; uses `ThemeCtx` (fully dark/light reactive — no hardcoded colors)
 
 The frontend is built and served as static files by FastAPI from `frontend/dist/`. API routes in `main.py` must be declared before the catch-all frontend route.
 
@@ -210,16 +210,17 @@ Health check: `GET /health` → `{"status": "healthy", "rsna_pipeline": "ready"|
 
 ## Test Suite
 
-**Backend (72 tests):**
+**Backend (74 tests):**
 - `tests/test_risk_model.py` — 34 tests: PHASES scoring, UIATS scoring, synthesis, heuristic probability
-- `tests/test_api.py` — 9 tests: all endpoints with schema validation and edge cases
-- `tests/test_marta_score.py` — MARTA-EVT and MARTA-NT logistic model tests
+- `tests/test_api.py` — 11 tests: all endpoints with schema validation, MARTA field smoke-test, edge cases
+- `tests/test_marta_score.py` — 36 tests: MARTA-EVT and MARTA-NT logistic model tests
 - `tests/test_hemodynamics.py` — hemodynamic simulation and mesh generation tests
+- `tests/test_data_loader.py` — HU thresholding and normalization
 
-**Frontend (24 tests, Vitest + React Testing Library):**
-- `src/App.test.jsx` — 8 tests: tab navigation, ClinicalForm display, treatment gating, DICOM placeholder
-- `src/components/ClinicalDecision.test.jsx` — 9 tests: accept/override workflow, null synthesis
-- `src/components/ClinicalForm.test.jsx` — 7 tests: field rendering, scanData pre-fill, submit
+**Frontend (28 tests, Vitest + React Testing Library):**
+- `src/App.test.jsx` — 10 tests: tab navigation, ClinicalForm display, treatment gating, DICOM placeholder, header/footer regression tests
+- `src/components/ClinicalDecision.test.jsx` — 9 tests: accept/override/bypass workflow, null synthesis
+- `src/components/ClinicalForm.test.jsx` — 9 tests: field rendering, scanData pre-fill, submit, disabled state
 
 ## Frontend Design System
 
@@ -231,7 +232,7 @@ The UI follows a **dark medical workstation** aesthetic (PACS-style, inspired by
 - **`App()`** holds `const [darkMode, setDarkMode] = useState(true)` and derives `const T = darkMode ? DARK : LIGHT`
 - **`ThemeCtx.Provider value={T}`** wraps the entire app return so sub-components get the reactive T via `useContext(ThemeCtx)` — no prop drilling
 - **`useEffect`** syncs `document.body.style.backgroundColor` when T changes (page edges match theme)
-- **Toggle button** in header (after AUC badge): `{darkMode ? '○ Light' : '◑ Dark'}`
+- **Toggle button** in header (right side): `{darkMode ? '○ Light' : '◑ Dark'}`
 - Sub-components `MetricPill`, `SectionHeader`, `ProbBar` each call `const T = useContext(ThemeCtx)` as their first line
 - Style objects `panelStyle`, `labelStyle`, `RISK_COLOR`, `RISK_DIM` live inside `App()` (not module-level) so they recompute from reactive T
 
@@ -254,11 +255,11 @@ The UI follows a **dark medical workstation** aesthetic (PACS-style, inspired by
 
 ### Layout
 
-- **Sticky header** — logo, tagline ("We find the aneurysm before it finds you."), tab navigation, pipeline status badge, dark/light toggle
+- **Sticky header** — logo, tagline ("We find the aneurysm before it finds you."), tab navigation, dark/light toggle (no pipeline status badges)
 - **5-tab navigation** — DICOM View / CTA Analysis / Risk & Clinical / MARTA Assessment / Treatment Sim
 - **Two-column grid** — left sidebar (controls/metrics) + right main panel (3D viewer, results)
 - **Consistent panel style** — `panelStyle` object: `background: T.panel, border: 1px solid T.border, borderRadius: 8`
-- **Footer** — `© 2026 NeuroPredict AI · RSNA 2025 Pipeline · For research use only` / `v2.1 · Not for clinical diagnosis`
+- **Footer** — `© 2026 NeuroPredict AI · For research use only` / `v2.1 · Not for clinical diagnosis`
 
 ### Design Rules
 
