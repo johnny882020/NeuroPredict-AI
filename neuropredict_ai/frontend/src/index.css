@@ -1,9 +1,9 @@
 :root {
-  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
   line-height: 1.5;
   font-weight: 400;
-  color: #1a1a2e;
-  background-color: #f0f2f5;
+  color: #e8edf5;
+  background-color: #080c14;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -12,17 +12,19 @@
 
 a {
   font-weight: 500;
-  color: #2563eb;
+  color: #06b6d4;
   text-decoration: none;
 }
 a:hover {
-  color: #1d4ed8;
+  color: #22d3ee;
 }
 
 body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  background-color: #080c14;
+  color: #e8edf5;
 }
 
 * {
@@ -30,53 +32,88 @@ body {
 }
 
 h1, h2, h3, h4, h5, h6 {
-  color: #1a1a2e;
+  color: #e8edf5;
 }
 
 button {
   border-radius: 6px;
-  border: 1px solid #d1d5db;
+  border: 1px solid #1e2d48;
   padding: 0.5em 1.2em;
   font-size: 0.95em;
-  font-weight: 500;
+  font-weight: 600;
   font-family: inherit;
-  background-color: #ffffff;
-  color: #374151;
+  background-color: #141b2d;
+  color: #e8edf5;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.15s ease;
 }
 button:hover:not(:disabled) {
-  background-color: #f3f4f6;
-  border-color: #2563eb;
-  color: #2563eb;
+  background-color: #1e2d48;
+  border-color: #06b6d4;
+  color: #06b6d4;
 }
 button:disabled {
-  opacity: 0.5;
+  opacity: 0.4;
   cursor: not-allowed;
 }
 button:focus-visible {
-  outline: 2px solid #2563eb;
+  outline: 2px solid #06b6d4;
   outline-offset: 2px;
 }
 
-/* Mobile-friendly file input */
+/* Scrollbar styling for dark theme */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #0e1420;
+}
+::-webkit-scrollbar-thumb {
+  background: #1e2d48;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #2a3f65;
+}
+
+/* File input dark styling */
 input[type="file"] {
   max-width: 100%;
-  font-size: 14px;
+  font-size: 12px;
+  color: #5d7a9e;
 }
 
-/* Ensure tables don't overflow on mobile */
+/* Select/input dark styling */
+select, input[type="text"], input[type="number"] {
+  background-color: #0e1420;
+  border: 1px solid #1e2d48;
+  color: #e8edf5;
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-family: inherit;
+  font-size: 12px;
+}
+select:focus, input[type="text"]:focus, input[type="number"]:focus {
+  outline: none;
+  border-color: #06b6d4;
+}
+
+/* Table dark styling */
 table {
-  display: block;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
+  width: 100%;
 }
 
-@media (max-width: 600px) {
+@media (max-width: 768px) {
   table {
-    font-size: 13px;
+    font-size: 12px;
   }
   table th, table td {
     padding: 6px 8px !important;
   }
+}
+
+/* Checkbox dark styling */
+input[type="checkbox"] {
+  accent-color: #06b6d4;
 }

@@ -4,30 +4,148 @@ import Viewer3D from './components/Viewer3D';
 import ClinicalForm from './components/ClinicalForm';
 import MARTAForm from './components/MARTAForm';
 
-const RISK_COLORS = { Low: '#16a34a', Moderate: '#d97706', High: '#dc2626' };
-const RISK_BG = { Low: '#f0fdf4', Moderate: '#fffbeb', High: '#fef2f2' };
-const RISK_BORDER = { Low: '#bbf7d0', Moderate: '#fde68a', High: '#fecaca' };
-
-const CARD = {
-    padding: '16px', borderRadius: '10px',
-    background: '#ffffff', border: '1px solid #e2e8f0',
-    boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+// ── Design tokens (dark medical workstation) ──────────────────────────────────
+const T = {
+    bg:       '#080c14',
+    surface:  '#0e1420',
+    panel:    '#141b2d',
+    border:   '#1e2d48',
+    borderSub:'#162038',
+    textPri:  '#e8edf5',
+    textSec:  '#5d7a9e',
+    textMuted:'#3a5070',
+    orange:   '#f97316',
+    orangeDim:'#7c3c0d',
+    cyan:     '#06b6d4',
+    cyanDim:  '#0c4a5a',
+    blue:     '#3b82f6',
+    blueDim:  '#1e3a5f',
+    green:    '#10b981',
+    greenDim: '#064e3b',
+    red:      '#ef4444',
+    redDim:   '#450a0a',
+    purple:   '#a855f7',
+    purpleDim:'#3b0764',
 };
 
-const MetricCard = ({ label, value, unit }) => (
+const RISK_COLOR = { Low: T.green, Moderate: T.orange, High: T.red };
+const RISK_DIM   = { Low: T.greenDim, Moderate: T.orangeDim, High: T.redDim };
+
+// ── Shared component styles ───────────────────────────────────────────────────
+const panelStyle = {
+    background: T.panel,
+    border: `1px solid ${T.border}`,
+    borderRadius: 8,
+    marginBottom: 16,
+};
+
+const labelStyle = {
+    fontSize: 10,
+    fontWeight: 600,
+    letterSpacing: '0.08em',
+    textTransform: 'uppercase',
+    color: T.textSec,
+    marginBottom: 4,
+    display: 'block',
+};
+
+const sectionTitle = {
+    fontSize: 12,
+    fontWeight: 700,
+    letterSpacing: '0.1em',
+    textTransform: 'uppercase',
+    color: T.cyan,
+    margin: '0 0 14px 0',
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+};
+
+const btnBase = {
+    border: 'none',
+    borderRadius: 6,
+    fontWeight: 700,
+    fontSize: 12,
+    letterSpacing: '0.06em',
+    cursor: 'pointer',
+    padding: '8px 18px',
+    transition: 'opacity 0.15s',
+};
+
+// ── Sub-components ────────────────────────────────────────────────────────────
+const Dot = ({ color = T.cyan, size = 7 }) => (
+    <span style={{
+        display: 'inline-block',
+        width: size, height: size,
+        borderRadius: '50%',
+        background: color,
+        boxShadow: `0 0 6px ${color}88`,
+        flexShrink: 0,
+    }} />
+);
+
+const MetricPill = ({ label, value, unit, accent }) => (
     <div style={{
-        padding: '10px 14px', background: '#f8fafc', borderRadius: 8,
-        border: '1px solid #e2e8f0', minWidth: 0,
+        background: T.surface,
+        border: `1px solid ${accent ? accent + '44' : T.borderSub}`,
+        borderRadius: 6,
+        padding: '8px 12px',
     }}>
-        <div style={{ fontSize: 11, color: '#64748b', marginBottom: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            {label}
-        </div>
-        <div style={{ fontSize: 16, fontWeight: 700, color: '#1e293b' }}>
-            {value}{unit && <span style={{ fontSize: 12, fontWeight: 400, color: '#64748b', marginLeft: 2 }}>{unit}</span>}
+        <div style={{ ...labelStyle, marginBottom: 2 }}>{label}</div>
+        <div style={{ fontSize: 18, fontWeight: 700, color: accent || T.textPri, lineHeight: 1.1 }}>
+            {value}
+            {unit && <span style={{ fontSize: 11, fontWeight: 400, color: T.textSec, marginLeft: 3 }}>{unit}</span>}
         </div>
     </div>
 );
 
+const SectionHeader = ({ icon, title, badge }) => (
+    <div style={{ ...sectionTitle }}>
+        {icon && <span style={{ fontSize: 14 }}>{icon}</span>}
+        {title}
+        {badge && (
+            <span style={{
+                marginLeft: 'auto',
+                fontSize: 10,
+                fontWeight: 700,
+                padding: '2px 8px',
+                borderRadius: 4,
+                background: T.cyanDim,
+                color: T.cyan,
+                letterSpacing: '0.05em',
+            }}>{badge}</span>
+        )}
+    </div>
+);
+
+const ProbBar = ({ label, prob, maxProb }) => {
+    const pct = (prob * 100).toFixed(1);
+    const relWidth = maxProb > 0 ? (prob / maxProb) * 100 : prob * 100;
+    const isTop = relWidth > 80;
+    return (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 7 }}>
+            <span style={{
+                fontSize: 11, color: isTop ? T.textPri : T.textSec,
+                minWidth: 240, flexShrink: 0, fontWeight: isTop ? 600 : 400,
+            }}>{label}</span>
+            <div style={{ flex: 1, height: 3, background: T.border, borderRadius: 2, overflow: 'hidden' }}>
+                <div style={{
+                    width: `${relWidth}%`, height: '100%',
+                    background: isTop ? T.orange : T.blue,
+                    borderRadius: 2,
+                    transition: 'width 0.7s cubic-bezier(0.4,0,0.2,1)',
+                }} />
+            </div>
+            <span style={{
+                fontSize: 11, fontWeight: 700,
+                color: isTop ? T.orange : T.textSec,
+                minWidth: 38, textAlign: 'right',
+            }}>{pct}%</span>
+        </div>
+    );
+};
+
+// ── Main App ──────────────────────────────────────────────────────────────────
 function App() {
     const [file, setFile] = useState(null);
     const [scanData, setScanData] = useState(null);
@@ -37,9 +155,10 @@ function App() {
     const [loading, setLoading] = useState(false);
     const [martaLoading, setMartaLoading] = useState(false);
     const [error, setError] = useState(null);
+    const [activeTab, setActiveTab] = useState('analysis');
 
     const [clinical, setClinical] = useState({
-        age: 50, smoking: false, hypertension: false, previous_sah: false, familial_sah: false
+        age: 50, smoking: false, hypertension: false, previous_sah: false, familial_sah: false,
     });
 
     const [martaData, setMartaData] = useState({
@@ -101,7 +220,7 @@ function App() {
             const result = await simulateTreatment(
                 type,
                 scanData.baseline_hemodynamics.mean_wss_pa,
-                scanData.baseline_hemodynamics.mean_osi
+                scanData.baseline_hemodynamics.mean_osi,
             );
             setSimulation(result);
         } catch (err) {
@@ -112,358 +231,718 @@ function App() {
     const hemo = scanData?.baseline_hemodynamics;
     const morph = scanData?.morphology;
     const mesh = scanData?.mesh;
-
     const vertexWss = hemo?.vertex_wss;
     const wssRange = hemo ? [hemo.min_wss_pa, hemo.max_wss_pa] : undefined;
+    const flowRisky = hemo?.flow_status?.toLowerCase().includes('risk');
 
-    const flowStatusIsRisky = hemo?.flow_status?.toLowerCase().includes('risk');
+    const tabs = [
+        { id: 'analysis', label: 'CTA Analysis' },
+        { id: 'risk',     label: 'Risk & Clinical' },
+        { id: 'marta',    label: 'MARTA Assessment' },
+        { id: 'treatment',label: 'Treatment Sim' },
+    ];
+
+    // sorted location probs
+    const sortedLocs = scanData?.location_probabilities
+        ? Object.entries(scanData.location_probabilities).sort(([, a], [, b]) => b - a)
+        : [];
+    const maxLocProb = sortedLocs[0]?.[1] ?? 1;
 
     return (
-        <div style={{ padding: '16px', fontFamily: "'Segoe UI', system-ui, sans-serif", maxWidth: '1500px', margin: '0 auto' }}>
-            {/* Header */}
-            <div style={{ marginBottom: '20px', borderBottom: '2px solid #e2e8f0', paddingBottom: '12px' }}>
-                <h1 style={{ margin: 0, fontSize: 'clamp(20px, 5vw, 28px)', color: '#1e293b' }}>NeuroPredict AI</h1>
-                <p style={{ margin: '4px 0 0 0', color: '#64748b', fontSize: '13px' }}>Precision Prediction. Dynamic Intervention.</p>
-            </div>
+        <div style={{
+            fontFamily: "'Inter', 'Segoe UI', system-ui, sans-serif",
+            background: T.bg,
+            minHeight: '100vh',
+            color: T.textPri,
+        }}>
+            {/* ── Top Header Bar ───────────────────────────────────────────── */}
+            <header style={{
+                background: T.surface,
+                borderBottom: `1px solid ${T.border}`,
+                padding: '0 24px',
+                display: 'flex',
+                alignItems: 'center',
+                height: 52,
+                gap: 16,
+                position: 'sticky',
+                top: 0,
+                zIndex: 100,
+            }}>
+                {/* Logo */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+                    <div style={{
+                        width: 30, height: 30, borderRadius: 8,
+                        background: `linear-gradient(135deg, ${T.cyan}, ${T.blue})`,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: 16, fontWeight: 900, color: '#fff',
+                    }}>N</div>
+                    <div>
+                        <div style={{ fontSize: 14, fontWeight: 800, letterSpacing: '-0.02em', color: T.textPri }}>
+                            NeuroPredict<span style={{ color: T.cyan }}>AI</span>
+                        </div>
+                        <div style={{ fontSize: 9, color: T.textMuted, letterSpacing: '0.1em', textTransform: 'uppercase', marginTop: -1 }}>
+                            Intracranial Aneurysm Platform
+                        </div>
+                    </div>
+                </div>
 
-            {/* Error banner */}
+                {/* Tab navigation */}
+                <nav style={{ display: 'flex', gap: 2, marginLeft: 20, flex: 1 }}>
+                    {tabs.map(tab => (
+                        <button key={tab.id} onClick={() => setActiveTab(tab.id)} style={{
+                            ...btnBase,
+                            padding: '6px 14px',
+                            background: activeTab === tab.id ? T.panel : 'transparent',
+                            color: activeTab === tab.id ? T.textPri : T.textSec,
+                            border: activeTab === tab.id ? `1px solid ${T.border}` : '1px solid transparent',
+                            borderBottom: activeTab === tab.id ? `2px solid ${T.cyan}` : '2px solid transparent',
+                            borderRadius: '6px 6px 0 0',
+                            fontSize: 12,
+                            marginBottom: -1,
+                        }}>
+                            {tab.label}
+                        </button>
+                    ))}
+                </nav>
+
+                {/* Status badge */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                    <Dot color={T.green} />
+                    <span style={{ fontSize: 11, color: T.textSec }}>
+                        {scanData?.pipeline === 'rsna_2025' ? 'RSNA 2025 Live' : 'Fallback Mode'}
+                    </span>
+                    <span style={{
+                        fontSize: 10, fontWeight: 700,
+                        padding: '2px 8px', borderRadius: 4,
+                        background: T.cyanDim, color: T.cyan,
+                        letterSpacing: '0.05em',
+                    }}>AUC 0.916</span>
+                </div>
+            </header>
+
+            {/* ── Error Banner ──────────────────────────────────────────────── */}
             {error && (
-                <div style={{ padding: '10px 14px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', marginBottom: '16px', color: '#991b1b', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-                    <span style={{ fontSize: 13, wordBreak: 'break-word' }}>{error}</span>
-                    <button onClick={() => setError(null)} style={{ background: 'none', border: 'none', color: '#991b1b', cursor: 'pointer', fontSize: '18px', padding: '0 4px', flexShrink: 0 }}>x</button>
+                <div style={{
+                    background: T.redDim,
+                    borderBottom: `1px solid ${T.red}44`,
+                    padding: '10px 24px',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    gap: 8,
+                }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <Dot color={T.red} />
+                        <span style={{ fontSize: 12, color: '#fca5a5' }}>{error}</span>
+                    </div>
+                    <button onClick={() => setError(null)} style={{
+                        ...btnBase, padding: '4px 10px',
+                        background: 'transparent', color: '#fca5a5',
+                        border: `1px solid ${T.red}44`, fontSize: 11,
+                    }}>Dismiss</button>
                 </div>
             )}
 
-            <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap', alignItems: 'flex-start' }}>
-                {/* LEFT COLUMN: Scan Analysis + Clinical */}
-                <div style={{ flex: 1, minWidth: 0, width: '100%' }}>
+            {/* ── Main Content ──────────────────────────────────────────────── */}
+            <div style={{ padding: 20, maxWidth: 1600, margin: '0 auto' }}>
 
-                    {/* Upload Section */}
-                    <div style={{ ...CARD, marginBottom: '20px' }}>
-                        <h3 style={{ margin: '0 0 12px 0', fontSize: '16px', color: '#1e40af' }}>1. Automated Aneurysm Analysis</h3>
-                        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
-                            <input type="file" onChange={(e) => setFile(e.target.files[0])} accept=".zip,.nii,.nii.gz"
-                                style={{ fontSize: '14px', color: '#475569', minWidth: 0, flex: '1 1 180px' }} />
-                            <span style={{ fontSize: 11, color: '#94a3b8', flex: '1 1 100%', marginTop: -6 }}>Upload .zip (DICOM series) or .nii.gz (NIfTI)</span>
-                            <button onClick={handleUpload} disabled={!file || loading}
-                                style={{
-                                    background: (!file || loading) ? '#94a3b8' : '#2563eb',
-                                    color: '#fff', border: 'none', fontWeight: '600',
-                                    padding: '8px 20px', whiteSpace: 'nowrap', width: 'auto',
+                {/* ── TAB: CTA Analysis ──────────────────────────────────── */}
+                {activeTab === 'analysis' && (
+                    <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr', gap: 16, alignItems: 'start' }}>
+
+                        {/* LEFT PANEL */}
+                        <div>
+                            {/* Upload */}
+                            <div style={{ ...panelStyle, padding: 16 }}>
+                                <SectionHeader icon="⬆" title="Load Study" />
+                                <label style={labelStyle}>Scan File</label>
+                                <input
+                                    type="file"
+                                    onChange={e => setFile(e.target.files[0])}
+                                    accept=".zip,.nii,.nii.gz"
+                                    style={{
+                                        display: 'block',
+                                        width: '100%', marginBottom: 8,
+                                        fontSize: 12, color: T.textSec,
+                                        background: T.surface,
+                                        border: `1px solid ${T.border}`,
+                                        borderRadius: 6, padding: '6px 10px',
+                                        boxSizing: 'border-box',
+                                    }}
+                                />
+                                <p style={{ fontSize: 10, color: T.textMuted, margin: '0 0 12px 0' }}>
+                                    .zip (DICOM series) · .nii.gz (NIfTI)
+                                </p>
+                                <button
+                                    onClick={handleUpload}
+                                    disabled={!file || loading}
+                                    style={{
+                                        ...btnBase,
+                                        width: '100%',
+                                        background: (!file || loading)
+                                            ? T.border
+                                            : `linear-gradient(90deg, ${T.cyan}, ${T.blue})`,
+                                        color: (!file || loading) ? T.textMuted : '#fff',
+                                        padding: '10px',
+                                        fontSize: 12,
+                                        opacity: loading ? 0.7 : 1,
+                                    }}
+                                >
+                                    {loading ? '⚙ Processing…' : '▶  Analyze CTA Scan'}
+                                </button>
+                            </div>
+
+                            {/* AI Detection Result */}
+                            {scanData && (
+                                <div style={{
+                                    ...panelStyle,
+                                    padding: 16,
+                                    borderColor: scanData.aneurysm_detected ? T.orange + '88' : T.green + '44',
                                 }}>
-                                {loading ? "Processing..." : "Analyze CTA Scan"}
-                            </button>
-                        </div>
-                    </div>
+                                    <SectionHeader icon="◉" title="AI Detection" badge="RSNA 2025" />
 
-                    {scanData && scanData.aneurysm_detected && (
-                        <>
-                            {/* RSNA 2025 AI Detection Result — AUC 0.916 */}
-                            <div style={{
-                                ...CARD, marginBottom: '20px',
-                                background: scanData.aneurysm_probability > 0.5 ? '#fef2f2' : '#f0fdf4',
-                                borderColor: scanData.aneurysm_probability > 0.5 ? '#fecaca' : '#bbf7d0',
-                            }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
-                                    <div>
-                                        <h3 style={{ margin: '0 0 2px 0', fontSize: 16, color: '#1e40af' }}>AI Aneurysm Detection</h3>
-                                        <p style={{ margin: 0, fontSize: 11, color: '#64748b' }}>RSNA 2025 Model · AUC 0.916 · {scanData.pipeline === 'rsna_2025' ? 'Live Model' : 'Fallback'}</p>
-                                    </div>
-                                    <div style={{ textAlign: 'right' }}>
-                                        <div style={{ fontSize: 28, fontWeight: 700, color: scanData.aneurysm_probability > 0.5 ? '#dc2626' : '#16a34a' }}>
-                                            {(scanData.aneurysm_probability * 100).toFixed(1)}%
-                                        </div>
-                                        <div style={{ fontSize: 12, color: '#64748b' }}>aneurysm probability</div>
-                                    </div>
-                                </div>
-                                <div style={{ marginTop: 10, height: 6, background: '#e2e8f0', borderRadius: 3, overflow: 'hidden' }}>
+                                    {/* Big probability display */}
                                     <div style={{
-                                        width: `${scanData.aneurysm_probability * 100}%`, height: '100%',
-                                        background: scanData.aneurysm_probability > 0.5 ? '#dc2626' : '#16a34a',
-                                        borderRadius: 3, transition: 'width 0.6s ease',
-                                    }} />
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'flex-end',
+                                        marginBottom: 12,
+                                    }}>
+                                        <div>
+                                            <div style={{ fontSize: 42, fontWeight: 900, lineHeight: 1,
+                                                color: scanData.aneurysm_probability > 0.5 ? T.orange : T.green,
+                                            }}>
+                                                {(scanData.aneurysm_probability * 100).toFixed(1)}
+                                                <span style={{ fontSize: 18, fontWeight: 600 }}>%</span>
+                                            </div>
+                                            <div style={{ fontSize: 11, color: T.textSec, marginTop: 2 }}>
+                                                aneurysm probability
+                                            </div>
+                                        </div>
+                                        <div style={{
+                                            padding: '5px 12px',
+                                            background: scanData.aneurysm_detected ? T.orangeDim : T.greenDim,
+                                            border: `1px solid ${scanData.aneurysm_detected ? T.orange : T.green}55`,
+                                            borderRadius: 6,
+                                            fontSize: 12, fontWeight: 700,
+                                            color: scanData.aneurysm_detected ? T.orange : T.green,
+                                            letterSpacing: '0.06em',
+                                        }}>
+                                            {scanData.aneurysm_detected ? 'DETECTED' : 'NEGATIVE'}
+                                        </div>
+                                    </div>
+
+                                    {/* Probability bar */}
+                                    <div style={{ height: 4, background: T.border, borderRadius: 2, overflow: 'hidden', marginBottom: 14 }}>
+                                        <div style={{
+                                            width: `${scanData.aneurysm_probability * 100}%`,
+                                            height: '100%',
+                                            background: scanData.aneurysm_probability > 0.5
+                                                ? `linear-gradient(90deg, ${T.orange}, #fb923c)`
+                                                : `linear-gradient(90deg, ${T.green}, #34d399)`,
+                                            borderRadius: 2,
+                                            transition: 'width 0.8s cubic-bezier(0.4,0,0.2,1)',
+                                        }} />
+                                    </div>
+
+                                    {/* Top location */}
+                                    {scanData.top_location && (
+                                        <div style={{
+                                            padding: '8px 12px',
+                                            background: T.surface,
+                                            borderRadius: 6,
+                                            border: `1px solid ${T.borderSub}`,
+                                        }}>
+                                            <span style={{ ...labelStyle, marginBottom: 2 }}>Primary Location</span>
+                                            <div style={{ fontSize: 13, fontWeight: 600, color: T.orange }}>
+                                                {scanData.top_location}
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
-                                {scanData.location_probabilities && (
-                                    <div style={{ marginTop: 14 }}>
-                                        <p style={{ margin: '0 0 6px 0', fontSize: 11, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Top Location Probabilities</p>
-                                        {Object.entries(scanData.location_probabilities)
-                                            .sort(([, a], [, b]) => b - a).slice(0, 5)
-                                            .map(([loc, prob]) => (
-                                                <div key={loc} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 5 }}>
-                                                    <span style={{ fontSize: 12, color: '#475569', minWidth: 230, flexShrink: 0 }}>{loc}</span>
-                                                    <div style={{ flex: 1, height: 4, background: '#e2e8f0', borderRadius: 2, overflow: 'hidden' }}>
-                                                        <div style={{ width: `${prob * 100}%`, height: '100%', background: '#2563eb', borderRadius: 2 }} />
-                                                    </div>
-                                                    <span style={{ fontSize: 12, fontWeight: 600, color: '#1e293b', minWidth: 38, textAlign: 'right' }}>
-                                                        {(prob * 100).toFixed(1)}%
-                                                    </span>
-                                                </div>
-                                            ))}
+                            )}
+
+                            {/* Flow Status */}
+                            {hemo && (
+                                <div style={{
+                                    ...panelStyle, padding: 14,
+                                    borderColor: flowRisky ? T.red + '55' : T.green + '44',
+                                    display: 'flex', alignItems: 'center', gap: 10,
+                                }}>
+                                    <Dot color={flowRisky ? T.red : T.green} size={8} />
+                                    <div>
+                                        <div style={{ fontSize: 11, color: T.textSec }}>Hemodynamic Status</div>
+                                        <div style={{
+                                            fontSize: 13, fontWeight: 700,
+                                            color: flowRisky ? T.red : T.green,
+                                        }}>{hemo.flow_status}</div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Morphology metrics */}
+                            {morph && (
+                                <div style={{ ...panelStyle, padding: 16 }}>
+                                    <SectionHeader icon="⬡" title="Morphology" />
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                                        <MetricPill label="Max Diameter" value={morph.maximum_3d_diameter_mm} unit="mm" accent={T.cyan} />
+                                        <MetricPill label="Aspect Ratio" value={morph.aspect_ratio_AR} />
+                                        <MetricPill label="Size Ratio" value={morph.size_ratio_SR} />
+                                        <MetricPill label="Neck Diam" value={morph.neck_diameter_mm} unit="mm" />
+                                        <MetricPill label="Volume" value={morph.volume_mm3 ?? mesh?.volume_mm3} unit="mm³" />
+                                        <MetricPill label="Irregularity" value={morph.irregularity_index} />
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Hemodynamics metrics */}
+                            {hemo && (
+                                <div style={{ ...panelStyle, padding: 16 }}>
+                                    <SectionHeader icon="~" title="Hemodynamics" />
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                                        <MetricPill label="Mean WSS" value={hemo.mean_wss_pa} unit="Pa" accent={T.cyan} />
+                                        <MetricPill label="Max WSS" value={hemo.max_wss_pa} unit="Pa" accent={flowRisky ? T.red : undefined} />
+                                        <MetricPill label="Min WSS" value={hemo.min_wss_pa} unit="Pa" />
+                                        <MetricPill label="Mean OSI" value={hemo.mean_osi} />
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* RIGHT PANEL */}
+                        <div>
+                            {/* 3D Viewer */}
+                            <div style={{
+                                ...panelStyle,
+                                padding: 16,
+                                minHeight: 420,
+                            }}>
+                                <SectionHeader icon="◈" title="3D Vessel Morphology" badge={mesh ? 'MESH READY' : 'AWAITING SCAN'} />
+                                {mesh ? (
+                                    <div style={{
+                                        borderRadius: 6,
+                                        overflow: 'hidden',
+                                        border: `1px solid ${T.border}`,
+                                    }}>
+                                        <Viewer3D
+                                            meshData={mesh}
+                                            vertexWss={vertexWss}
+                                            wssRange={wssRange}
+                                        />
+                                    </div>
+                                ) : (
+                                    <div style={{
+                                        height: 360,
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        background: T.surface,
+                                        borderRadius: 6,
+                                        border: `1px dashed ${T.border}`,
+                                        gap: 12,
+                                    }}>
+                                        <div style={{ fontSize: 48, opacity: 0.2 }}>◈</div>
+                                        <div style={{ fontSize: 13, color: T.textMuted, textAlign: 'center' }}>
+                                            Upload a CTA scan to render<br />3D vessel morphology
+                                        </div>
                                     </div>
                                 )}
                             </div>
 
-                            {/* 3D Viewer with WSS */}
-                            <div style={{ ...CARD, marginBottom: '20px' }}>
-                                <h3 style={{ margin: '0 0 12px 0', fontSize: '16px', color: '#1e40af' }}>3D Aneurysm Morphology</h3>
-                                <Viewer3D
-                                    meshData={mesh}
-                                    vertexWss={vertexWss}
-                                    wssRange={wssRange}
-                                />
-                            </div>
+                            {/* Location Probabilities */}
+                            {sortedLocs.length > 0 && (
+                                <div style={{ ...panelStyle, padding: 16 }}>
+                                    <SectionHeader icon="◎" title="Vessel Location Probabilities" badge="13 LOCATIONS" />
+                                    <div>
+                                        {sortedLocs.slice(0, 8).map(([loc, prob]) => (
+                                            <ProbBar key={loc} label={loc} prob={prob} maxProb={maxLocProb} />
+                                        ))}
+                                        {sortedLocs.length > 8 && (
+                                            <div style={{ fontSize: 11, color: T.textMuted, marginTop: 6 }}>
+                                                + {sortedLocs.length - 8} more locations below threshold
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
 
-                            {/* Flow Status Banner */}
-                            {hemo && (
+                            {/* No aneurysm detected */}
+                            {scanData && !scanData.aneurysm_detected && (
                                 <div style={{
-                                    ...CARD, marginBottom: '20px',
-                                    background: flowStatusIsRisky ? '#fef2f2' : '#f0fdf4',
-                                    borderColor: flowStatusIsRisky ? '#fecaca' : '#bbf7d0',
-                                    display: 'flex', alignItems: 'center', gap: 10,
+                                    ...panelStyle,
+                                    padding: 24,
+                                    borderColor: T.green + '55',
+                                    textAlign: 'center',
                                 }}>
-                                    <div style={{
-                                        width: 10, height: 10, borderRadius: '50%',
-                                        background: flowStatusIsRisky ? '#dc2626' : '#16a34a',
-                                        flexShrink: 0,
-                                    }} />
-                                    <span style={{
-                                        fontWeight: 600, fontSize: 14,
-                                        color: flowStatusIsRisky ? '#991b1b' : '#166534',
-                                    }}>
-                                        {hemo.flow_status}
-                                    </span>
+                                    <div style={{ fontSize: 36, marginBottom: 10 }}>✓</div>
+                                    <div style={{ fontSize: 16, fontWeight: 700, color: T.green }}>No Aneurysm Detected</div>
+                                    <div style={{ fontSize: 13, color: T.textSec, marginTop: 6 }}>
+                                        AI probability: {(scanData.aneurysm_probability * 100).toFixed(1)}%
+                                    </div>
                                 </div>
                             )}
+                        </div>
+                    </div>
+                )}
 
-                            {/* Angioarchitecture Panel */}
-                            {(morph || hemo) && (
-                                <div style={{ ...CARD, marginBottom: '20px' }}>
-                                    <h3 style={{ margin: '0 0 16px 0', fontSize: '16px', color: '#1e40af' }}>Angioarchitecture</h3>
-
-                                    {/* Morphology Metrics */}
-                                    {morph && (
-                                        <>
-                                            <h4 style={{ margin: '0 0 8px 0', fontSize: 13, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Morphology</h4>
-                                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 8, marginBottom: 16 }}>
-                                                <MetricCard label="Max Diameter" value={morph.maximum_3d_diameter_mm} unit="mm" />
-                                                <MetricCard label="Volume" value={morph.volume_mm3 ?? mesh?.volume_mm3} unit="mm3" />
-                                                <MetricCard label="Surface Area" value={morph.surface_area_mm2 ?? mesh?.surface_area_mm2} unit="mm2" />
-                                                <MetricCard label="Aspect Ratio" value={morph.aspect_ratio_AR} />
-                                                <MetricCard label="Size Ratio" value={morph.size_ratio_SR} />
-                                                <MetricCard label="Neck Diameter" value={morph.neck_diameter_mm} unit="mm" />
-                                                <MetricCard label="Irregularity" value={morph.irregularity_index} />
-                                            </div>
-                                        </>
-                                    )}
-
-                                    {/* Hemodynamics Metrics */}
-                                    {hemo && (
-                                        <>
-                                            <h4 style={{ margin: '0 0 8px 0', fontSize: 13, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Hemodynamics</h4>
-                                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 8, marginBottom: 16 }}>
-                                                <MetricCard label="Mean WSS" value={hemo.mean_wss_pa} unit="Pa" />
-                                                <MetricCard label="Max WSS" value={hemo.max_wss_pa} unit="Pa" />
-                                                <MetricCard label="Min WSS" value={hemo.min_wss_pa} unit="Pa" />
-                                                <MetricCard label="WSS Std Dev" value={hemo.wss_std_pa} unit="Pa" />
-                                                <MetricCard label="Mean OSI" value={hemo.mean_osi} />
-                                                <MetricCard label="Elongation" value={hemo.elongation_ratio} />
-                                            </div>
-
-                                            {hemo.flow_direction && (
-                                                <div style={{ padding: '8px 12px', background: '#f0f9ff', borderRadius: 6, border: '1px solid #bae6fd', fontSize: 13, color: '#0c4a6e', wordBreak: 'break-all' }}>
-                                                    <strong>Flow Direction:</strong>{' '}
-                                                    [{hemo.flow_direction.map(v => v.toFixed(3)).join(', ')}]
-                                                </div>
-                                            )}
-                                        </>
-                                    )}
-                                </div>
-                            )}
-
-                            {/* Clinical Risk */}
-                            <div style={{ ...CARD, marginBottom: '20px' }}>
-                                <h3 style={{ margin: '0 0 12px 0', fontSize: '16px', color: '#1e40af' }}>2. Clinical Data & Risk Prediction</h3>
+                {/* ── TAB: Risk & Clinical ──────────────────────────────────── */}
+                {activeTab === 'risk' && (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, alignItems: 'start' }}>
+                        <div style={{ ...panelStyle, padding: 20 }}>
+                            <SectionHeader icon="♥" title="Clinical Risk Prediction" />
+                            {scanData ? (
                                 <ClinicalForm
                                     clinical={clinical}
                                     setClinical={setClinical}
                                     onSubmit={handleRiskPrediction}
                                 />
-                            </div>
-
-                            {riskData && (
-                                <div style={{ ...CARD, marginBottom: '20px', background: '#f0f9ff', borderColor: '#bae6fd' }}>
-                                    <h4 style={{ margin: '0 0 10px 0', color: '#0c4a6e' }}>Risk Assessment</h4>
-                                    <p style={{ color: '#334155', fontSize: 14 }}><strong>UIATS Score:</strong> {riskData.uiats_assessment.uiats_score}</p>
-                                    <p style={{ color: '#334155', fontSize: 14 }}><strong>UIATS Recommendation:</strong> {riskData.uiats_assessment.uiats_recommendation}</p>
-                                    <p style={{ color: '#334155', fontSize: 14 }}><strong>AI Rupture Probability:</strong> <span style={{ fontWeight: '700', color: '#dc2626' }}>{(riskData.ai_rupture_probability * 100).toFixed(2)}%</span></p>
-                                </div>
-                            )}
-
-                            {/* Treatment Simulation */}
-                            <div style={{ ...CARD, marginBottom: '20px' }}>
-                                <h3 style={{ margin: '0 0 12px 0', fontSize: '16px', color: '#1e40af' }}>3. Treatment Simulation</h3>
-                                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                                    <button onClick={() => handleSimulation('flow_diverter')}
-                                        style={{ background: '#7c3aed', color: '#fff', border: 'none', fontWeight: '600', flex: '1 1 auto', minWidth: 'fit-content' }}>
-                                        Simulate Flow Diverter
-                                    </button>
-                                    <button onClick={() => handleSimulation('surgical_clip')}
-                                        style={{ background: '#059669', color: '#fff', border: 'none', fontWeight: '600', flex: '1 1 auto', minWidth: 'fit-content' }}>
-                                        Simulate Surgical Clip
-                                    </button>
-                                </div>
-                            </div>
-
-                            {simulation && (
-                                <div style={{ ...CARD, marginBottom: '20px', background: '#f0fdf4', borderColor: '#bbf7d0' }}>
-                                    <h4 style={{ margin: '0 0 10px 0', color: '#166534' }}>Post-Treatment Hemodynamics</h4>
-                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '8px' }}>
-                                        <p style={{ margin: 0, color: '#334155', fontSize: 14 }}><strong>Mean WSS:</strong> {simulation.mean_wss_pa} Pa</p>
-                                        <p style={{ margin: 0, color: '#334155', fontSize: 14 }}><strong>Max WSS:</strong> {simulation.max_wss_pa} Pa</p>
-                                        <p style={{ margin: 0, color: '#334155', fontSize: 14 }}><strong>OSI:</strong> {simulation.mean_osi}</p>
+                            ) : (
+                                <div style={{
+                                    padding: 24, textAlign: 'center',
+                                    background: T.surface, borderRadius: 6,
+                                    border: `1px dashed ${T.border}`,
+                                }}>
+                                    <div style={{ color: T.textMuted, fontSize: 13 }}>
+                                        Analyze a CTA scan first to enable risk prediction
                                     </div>
-                                    <p style={{ marginTop: '10px', padding: '10px', background: '#dcfce7', borderRadius: '6px', color: '#166534', fontSize: '14px' }}>
-                                        <strong>Outcome:</strong> {simulation.clinical_outcome}
-                                    </p>
                                 </div>
                             )}
-                        </>
-                    )}
-
-                    {scanData && !scanData.aneurysm_detected && (
-                        <div style={{ ...CARD, background: '#f0fdf4', borderColor: '#bbf7d0' }}>
-                            <h3 style={{ margin: 0, color: '#166534' }}>No aneurysm detected in this scan.</h3>
                         </div>
-                    )}
-                </div>
 
-                {/* RIGHT COLUMN: MARTA Score */}
-                <div style={{ flex: 1, minWidth: 0, width: '100%' }}>
-                    <div style={{ ...CARD, marginBottom: '20px' }}>
-                        <h3 style={{ margin: '0 0 4px 0', fontSize: '16px', color: '#1e40af' }}>MARTA Risk Assessment</h3>
-                        <p style={{ color: '#64748b', fontSize: '13px', margin: '0 0 16px 0' }}>
-                            Morphological And Risk-related Treatment Assessment
-                        </p>
-
-                        <MARTAForm
-                            martaData={martaData}
-                            setMartaData={setMartaData}
-                            onSubmit={handleMARTA}
-                            loading={martaLoading}
-                        />
-                    </div>
-
-                    {martaResult && (
                         <div>
-                            <h4 style={{ margin: '0 0 12px 0', fontSize: '18px', color: '#1e293b' }}>MARTA Results</h4>
+                            {riskData && (
+                                <div style={{ ...panelStyle, padding: 20 }}>
+                                    <SectionHeader icon="◉" title="Risk Assessment Results" />
 
-                            {/* EVT vs NT */}
-                            <div style={{ display: 'flex', gap: '12px', marginBottom: '16px', flexWrap: 'wrap' }}>
-                                <div style={{
-                                    ...CARD, flex: '1 1 140px', minWidth: 0,
-                                    background: RISK_BG[martaResult.evt_risk_category],
-                                    borderColor: RISK_BORDER[martaResult.evt_risk_category],
-                                }}>
-                                    <h5 style={{ margin: '0 0 6px 0', color: '#1e40af', fontSize: '14px' }}>MARTA-EVT</h5>
-                                    <p style={{ fontSize: 'clamp(24px, 5vw, 32px)', fontWeight: '700', margin: '4px 0', color: '#1e293b' }}>
-                                        {martaResult.details.evt_probability_pct}%
-                                    </p>
-                                    <span style={{
-                                        padding: '3px 12px', borderRadius: '20px', fontSize: '13px', fontWeight: '600',
-                                        background: RISK_COLORS[martaResult.evt_risk_category] + '18',
-                                        color: RISK_COLORS[martaResult.evt_risk_category],
-                                        border: `1px solid ${RISK_COLORS[martaResult.evt_risk_category]}40`,
+                                    <div style={{
+                                        padding: '16px 20px',
+                                        background: T.surface,
+                                        borderRadius: 8,
+                                        border: `1px solid ${T.border}`,
+                                        marginBottom: 12,
                                     }}>
-                                        {martaResult.evt_risk_category} Risk
-                                    </span>
-                                </div>
+                                        <div style={{ ...labelStyle }}>UIATS Score</div>
+                                        <div style={{ fontSize: 36, fontWeight: 900, color: T.cyan }}>
+                                            {riskData.uiats_assessment.uiats_score}
+                                        </div>
+                                        <div style={{ fontSize: 13, color: T.textSec, marginTop: 4 }}>
+                                            {riskData.uiats_assessment.uiats_recommendation}
+                                        </div>
+                                    </div>
 
-                                <div style={{
-                                    ...CARD, flex: '1 1 140px', minWidth: 0,
-                                    background: RISK_BG[martaResult.nt_risk_category],
-                                    borderColor: RISK_BORDER[martaResult.nt_risk_category],
-                                }}>
-                                    <h5 style={{ margin: '0 0 6px 0', color: '#7c3aed', fontSize: '14px' }}>MARTA-NT</h5>
-                                    <p style={{ fontSize: 'clamp(24px, 5vw, 32px)', fontWeight: '700', margin: '4px 0', color: '#1e293b' }}>
-                                        {martaResult.details.nt_probability_pct}%
-                                    </p>
-                                    <span style={{
-                                        padding: '3px 12px', borderRadius: '20px', fontSize: '13px', fontWeight: '600',
-                                        background: RISK_COLORS[martaResult.nt_risk_category] + '18',
-                                        color: RISK_COLORS[martaResult.nt_risk_category],
-                                        border: `1px solid ${RISK_COLORS[martaResult.nt_risk_category]}40`,
+                                    <div style={{
+                                        padding: '16px 20px',
+                                        background: T.redDim,
+                                        borderRadius: 8,
+                                        border: `1px solid ${T.red}44`,
                                     }}>
-                                        {martaResult.nt_risk_category} Risk
-                                    </span>
-                                </div>
-                            </div>
-
-                            {/* Treatment Recommendation */}
-                            <div style={{ ...CARD, marginBottom: '16px', background: '#f0fdf4', borderColor: '#bbf7d0' }}>
-                                <h5 style={{ margin: '0 0 8px 0', color: '#166534', fontSize: '15px' }}>Recommended Treatment Approach</h5>
-                                <p style={{ margin: 0, fontSize: '14px', color: '#334155' }}>{martaResult.recommended_treatment}</p>
-                            </div>
-
-                            {/* Best EVT Device */}
-                            {martaResult.details.best_evt_approach && (
-                                <div style={{ ...CARD, marginBottom: '16px', background: '#f5f3ff', borderColor: '#ddd6fe' }}>
-                                    <h5 style={{ margin: '0 0 8px 0', color: '#5b21b6', fontSize: '15px' }}>Recommended EVT Device</h5>
-                                    <p style={{ margin: 0, fontSize: '14px', color: '#334155', wordBreak: 'break-word' }}>
-                                        <strong>{martaResult.details.best_evt_approach}</strong>
-                                        {' \u2014 '}
-                                        <span style={{ color: RISK_COLORS[martaResult.details.evt_approach_comparison?.[0]?.risk_category || 'Moderate'] }}>
-                                            {martaResult.details.best_evt_approach_risk_pct}% complication risk
-                                        </span>
-                                    </p>
+                                        <div style={{ ...labelStyle }}>AI Rupture Probability</div>
+                                        <div style={{ fontSize: 36, fontWeight: 900, color: T.red }}>
+                                            {(riskData.ai_rupture_probability * 100).toFixed(2)}%
+                                        </div>
+                                        <div style={{ fontSize: 11, color: T.textSec, marginTop: 4 }}>
+                                            Source: {riskData.probability_source || 'heuristic'}
+                                        </div>
+                                    </div>
                                 </div>
                             )}
 
-                            {/* EVT Comparison Table */}
-                            {martaResult.details.evt_approach_comparison && (
-                                <div style={{ ...CARD, overflow: 'hidden' }}>
-                                    <h5 style={{ margin: '0 0 12px 0', color: '#1e40af', fontSize: '15px' }}>EVT Approach Comparison</h5>
-                                    <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-                                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px', minWidth: '300px' }}>
-                                            <thead>
-                                                <tr style={{ borderBottom: '2px solid #e2e8f0' }}>
-                                                    <th style={{ textAlign: 'left', padding: '8px 10px', color: '#64748b', fontWeight: '600' }}>Approach</th>
-                                                    <th style={{ textAlign: 'right', padding: '8px 10px', color: '#64748b', fontWeight: '600' }}>Risk %</th>
-                                                    <th style={{ textAlign: 'center', padding: '8px 10px', color: '#64748b', fontWeight: '600' }}>Category</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {martaResult.details.evt_approach_comparison.map((row, i) => (
-                                                    <tr key={row.approach} style={{
-                                                        borderBottom: '1px solid #f1f5f9',
-                                                        background: i === 0 ? '#f0fdf4' : (i % 2 === 0 ? '#f8fafc' : '#ffffff'),
-                                                    }}>
-                                                        <td style={{ padding: '8px 10px', color: '#334155', fontWeight: i === 0 ? '600' : '400' }}>
-                                                            {i === 0 && <span style={{ color: '#16a34a', marginRight: '4px' }}>*</span>}{row.label}
-                                                        </td>
-                                                        <td style={{ textAlign: 'right', padding: '8px 10px', fontWeight: '600', color: '#1e293b' }}>
-                                                            {row.probability_pct}%
-                                                        </td>
-                                                        <td style={{ textAlign: 'center', padding: '8px 10px' }}>
-                                                            <span style={{
-                                                                padding: '2px 10px', borderRadius: '20px', fontSize: '12px', fontWeight: '600',
-                                                                background: RISK_COLORS[row.risk_category] + '15',
-                                                                color: RISK_COLORS[row.risk_category],
-                                                                border: `1px solid ${RISK_COLORS[row.risk_category]}30`,
-                                                            }}>
-                                                                {row.risk_category}
-                                                            </span>
-                                                        </td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
+                            {!riskData && scanData && (
+                                <div style={{
+                                    ...panelStyle, padding: 24,
+                                    textAlign: 'center', minHeight: 200,
+                                    display: 'flex', flexDirection: 'column',
+                                    alignItems: 'center', justifyContent: 'center',
+                                }}>
+                                    <div style={{ fontSize: 32, opacity: 0.2, marginBottom: 10 }}>◉</div>
+                                    <div style={{ color: T.textMuted, fontSize: 13 }}>
+                                        Complete the clinical form to see risk results
                                     </div>
                                 </div>
                             )}
                         </div>
-                    )}
-                </div>
+                    </div>
+                )}
+
+                {/* ── TAB: MARTA Assessment ──────────────────────────────────── */}
+                {activeTab === 'marta' && (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, alignItems: 'start' }}>
+                        <div style={{ ...panelStyle, padding: 20 }}>
+                            <SectionHeader icon="⚕" title="MARTA Assessment" />
+                            <p style={{ fontSize: 11, color: T.textSec, margin: '0 0 16px 0' }}>
+                                Morphological And Risk-related Treatment Assessment
+                            </p>
+                            <MARTAForm
+                                martaData={martaData}
+                                setMartaData={setMartaData}
+                                onSubmit={handleMARTA}
+                                loading={martaLoading}
+                            />
+                        </div>
+
+                        {martaResult && (
+                            <div>
+                                {/* EVT / NT cards */}
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+                                    {[
+                                        { key: 'evt', label: 'MARTA-EVT', pct: martaResult.details.evt_probability_pct, cat: martaResult.evt_risk_category },
+                                        { key: 'nt',  label: 'MARTA-NT',  pct: martaResult.details.nt_probability_pct,  cat: martaResult.nt_risk_category  },
+                                    ].map(({ key, label, pct, cat }) => (
+                                        <div key={key} style={{
+                                            ...panelStyle,
+                                            padding: '16px 18px', marginBottom: 0,
+                                            borderColor: RISK_COLOR[cat] + '44',
+                                        }}>
+                                            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: RISK_COLOR[cat], marginBottom: 4 }}>
+                                                {label}
+                                            </div>
+                                            <div style={{ fontSize: 38, fontWeight: 900, color: RISK_COLOR[cat], lineHeight: 1 }}>
+                                                {pct}<span style={{ fontSize: 18 }}>%</span>
+                                            </div>
+                                            <div style={{
+                                                display: 'inline-block',
+                                                marginTop: 8,
+                                                padding: '2px 10px',
+                                                background: RISK_DIM[cat],
+                                                border: `1px solid ${RISK_COLOR[cat]}44`,
+                                                borderRadius: 4,
+                                                fontSize: 11, fontWeight: 700,
+                                                color: RISK_COLOR[cat],
+                                            }}>{cat} Risk</div>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                {/* Recommendation */}
+                                <div style={{
+                                    ...panelStyle, padding: 16, marginBottom: 12,
+                                    borderColor: T.green + '44',
+                                }}>
+                                    <SectionHeader icon="✓" title="Recommended Treatment" />
+                                    <p style={{ margin: 0, fontSize: 13, color: T.textPri, lineHeight: 1.6 }}>
+                                        {martaResult.recommended_treatment}
+                                    </p>
+                                </div>
+
+                                {/* Best EVT Device */}
+                                {martaResult.details.best_evt_approach && (
+                                    <div style={{ ...panelStyle, padding: 16, marginBottom: 12, borderColor: T.purple + '44' }}>
+                                        <SectionHeader icon="⬡" title="Best EVT Device" />
+                                        <div style={{ fontSize: 14, fontWeight: 700, color: T.purple }}>
+                                            {martaResult.details.best_evt_approach}
+                                        </div>
+                                        <div style={{ fontSize: 12, color: T.textSec, marginTop: 4 }}>
+                                            {martaResult.details.best_evt_approach_risk_pct}% complication risk
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* EVT Comparison Table */}
+                                {martaResult.details.evt_approach_comparison && (
+                                    <div style={{ ...panelStyle, padding: 16 }}>
+                                        <SectionHeader icon="≡" title="EVT Approach Comparison" />
+                                        <div style={{ overflowX: 'auto' }}>
+                                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                                                <thead>
+                                                    <tr style={{ borderBottom: `1px solid ${T.border}` }}>
+                                                        {['Approach', 'Risk %', 'Category'].map(h => (
+                                                            <th key={h} style={{
+                                                                padding: '8px 10px', textAlign: h === 'Risk %' ? 'right' : h === 'Category' ? 'center' : 'left',
+                                                                color: T.textSec, fontWeight: 600, fontSize: 10,
+                                                                textTransform: 'uppercase', letterSpacing: '0.08em',
+                                                            }}>{h}</th>
+                                                        ))}
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {martaResult.details.evt_approach_comparison.map((row, i) => (
+                                                        <tr key={row.approach} style={{
+                                                            borderBottom: `1px solid ${T.borderSub}`,
+                                                            background: i === 0 ? T.greenDim + '88' : 'transparent',
+                                                        }}>
+                                                            <td style={{ padding: '8px 10px', color: i === 0 ? T.green : T.textPri, fontWeight: i === 0 ? 700 : 400 }}>
+                                                                {i === 0 && <span style={{ color: T.green, marginRight: 6 }}>★</span>}{row.label}
+                                                            </td>
+                                                            <td style={{ textAlign: 'right', padding: '8px 10px', fontWeight: 700, color: RISK_COLOR[row.risk_category] }}>
+                                                                {row.probability_pct}%
+                                                            </td>
+                                                            <td style={{ textAlign: 'center', padding: '8px 10px' }}>
+                                                                <span style={{
+                                                                    padding: '2px 8px', borderRadius: 4,
+                                                                    background: RISK_DIM[row.risk_category],
+                                                                    color: RISK_COLOR[row.risk_category],
+                                                                    fontSize: 10, fontWeight: 700,
+                                                                }}>{row.risk_category}</span>
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {!martaResult && (
+                            <div style={{
+                                ...panelStyle, padding: 24,
+                                textAlign: 'center',
+                                display: 'flex', flexDirection: 'column',
+                                alignItems: 'center', justifyContent: 'center',
+                                minHeight: 300,
+                            }}>
+                                <div style={{ fontSize: 40, opacity: 0.15, marginBottom: 12 }}>⚕</div>
+                                <div style={{ color: T.textMuted, fontSize: 13 }}>
+                                    Complete the MARTA form to see treatment risk assessment
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* ── TAB: Treatment Simulation ──────────────────────────────── */}
+                {activeTab === 'treatment' && (
+                    <div style={{ display: 'grid', gridTemplateColumns: '300px 1fr', gap: 16, alignItems: 'start' }}>
+                        <div style={{ ...panelStyle, padding: 20 }}>
+                            <SectionHeader icon="⚙" title="Treatment Simulation" />
+                            {scanData ? (
+                                <>
+                                    <p style={{ fontSize: 12, color: T.textSec, margin: '0 0 16px 0' }}>
+                                        Simulate post-treatment hemodynamic changes using baseline CFD values.
+                                    </p>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                                        <button
+                                            onClick={() => handleSimulation('flow_diverter')}
+                                            style={{
+                                                ...btnBase, width: '100%', padding: '12px',
+                                                background: `linear-gradient(90deg, ${T.purple}, #9333ea)`,
+                                                color: '#fff', fontSize: 12,
+                                            }}
+                                        >
+                                            ◈  Simulate Flow Diverter
+                                        </button>
+                                        <button
+                                            onClick={() => handleSimulation('surgical_clip')}
+                                            style={{
+                                                ...btnBase, width: '100%', padding: '12px',
+                                                background: `linear-gradient(90deg, ${T.green}, #059669)`,
+                                                color: '#fff', fontSize: 12,
+                                            }}
+                                        >
+                                            ✂  Simulate Surgical Clip
+                                        </button>
+                                    </div>
+
+                                    {/* Baseline stats */}
+                                    {hemo && (
+                                        <div style={{ marginTop: 20 }}>
+                                            <div style={{ ...labelStyle, marginBottom: 10 }}>Baseline Values</div>
+                                            <div style={{ display: 'grid', gap: 8 }}>
+                                                <MetricPill label="Mean WSS" value={hemo.mean_wss_pa} unit="Pa" accent={T.cyan} />
+                                                <MetricPill label="Mean OSI" value={hemo.mean_osi} />
+                                            </div>
+                                        </div>
+                                    )}
+                                </>
+                            ) : (
+                                <div style={{
+                                    padding: 20, textAlign: 'center',
+                                    background: T.surface, borderRadius: 6,
+                                    border: `1px dashed ${T.border}`,
+                                    color: T.textMuted, fontSize: 13,
+                                }}>
+                                    Analyze a CTA scan first to enable treatment simulation
+                                </div>
+                            )}
+                        </div>
+
+                        {simulation && (
+                            <div>
+                                <div style={{ ...panelStyle, padding: 20 }}>
+                                    <SectionHeader icon="◉" title="Post-Treatment Hemodynamics" />
+
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 16 }}>
+                                        <MetricPill label="Post WSS Mean" value={simulation.mean_wss_pa} unit="Pa" accent={T.cyan} />
+                                        <MetricPill label="Post WSS Max" value={simulation.max_wss_pa} unit="Pa" />
+                                        <MetricPill label="Post OSI" value={simulation.mean_osi} />
+                                    </div>
+
+                                    {/* Delta indicators */}
+                                    {hemo && (
+                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10, marginBottom: 16 }}>
+                                            {[
+                                                { label: 'WSS Change', pre: hemo.mean_wss_pa, post: simulation.mean_wss_pa },
+                                                { label: 'OSI Change', pre: hemo.mean_osi, post: simulation.mean_osi },
+                                            ].map(({ label, pre, post }) => {
+                                                const delta = ((post - pre) / Math.abs(pre) * 100).toFixed(1);
+                                                const isDown = post < pre;
+                                                return (
+                                                    <div key={label} style={{
+                                                        background: T.surface,
+                                                        border: `1px solid ${isDown ? T.green + '44' : T.red + '44'}`,
+                                                        borderRadius: 6, padding: '10px 14px',
+                                                    }}>
+                                                        <div style={{ ...labelStyle }}>{label}</div>
+                                                        <div style={{ fontSize: 22, fontWeight: 800, color: isDown ? T.green : T.red }}>
+                                                            {isDown ? '▼' : '▲'} {Math.abs(delta)}%
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+
+                                    <div style={{
+                                        padding: '14px 16px',
+                                        background: T.greenDim,
+                                        border: `1px solid ${T.green}44`,
+                                        borderRadius: 8,
+                                    }}>
+                                        <div style={{ ...labelStyle, color: T.green, marginBottom: 6 }}>Clinical Outcome Prediction</div>
+                                        <p style={{ margin: 0, fontSize: 13, color: '#a7f3d0', lineHeight: 1.6 }}>
+                                            {simulation.clinical_outcome}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {!simulation && scanData && (
+                            <div style={{
+                                ...panelStyle, padding: 24,
+                                textAlign: 'center',
+                                display: 'flex', flexDirection: 'column',
+                                alignItems: 'center', justifyContent: 'center',
+                                minHeight: 300,
+                            }}>
+                                <div style={{ fontSize: 40, opacity: 0.15, marginBottom: 12 }}>⚙</div>
+                                <div style={{ color: T.textMuted, fontSize: 13 }}>
+                                    Select a treatment type to run simulation
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
             </div>
+
+            {/* ── Footer ────────────────────────────────────────────────────── */}
+            <footer style={{
+                borderTop: `1px solid ${T.border}`,
+                padding: '12px 24px',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginTop: 20,
+            }}>
+                <span style={{ fontSize: 10, color: T.textMuted }}>
+                    NeuroPredict AI v2.0 · RSNA 2025 Pipeline · For research use only
+                </span>
+                <span style={{ fontSize: 10, color: T.textMuted }}>
+                    Not for clinical diagnosis
+                </span>
+            </footer>
         </div>
     );
 }

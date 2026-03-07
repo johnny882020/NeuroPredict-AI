@@ -147,6 +147,44 @@ Initialize with: `git submodule update --init --recursive`
 
 Health check: `GET /health` → `{"status": "healthy", "rsna_pipeline": "ready"|"weights_required"}`
 
+## Frontend Design System
+
+The UI follows a **dark medical workstation** aesthetic (PACS-style, inspired by professional AI radiology platforms like Aidoc and Viz.ai).
+
+### Color Tokens (`src/App.jsx` — `T` object)
+
+| Token | Value | Usage |
+|-------|-------|-------|
+| `T.bg` | `#080c14` | Page background |
+| `T.surface` | `#0e1420` | Input backgrounds, nested surfaces |
+| `T.panel` | `#141b2d` | Card/panel backgrounds |
+| `T.border` | `#1e2d48` | Panel borders |
+| `T.textPri` | `#e8edf5` | Primary text |
+| `T.textSec` | `#5d7a9e` | Secondary/label text |
+| `T.cyan` | `#06b6d4` | Section titles, interactive accents |
+| `T.orange` | `#f97316` | Critical findings, high probability alerts |
+| `T.green` | `#10b981` | Normal/negative findings |
+| `T.red` | `#ef4444` | High-risk indicators |
+| `T.purple` | `#a855f7` | Treatment/EVT device highlights |
+| `T.blue` | `#3b82f6` | Location probability bars |
+
+### Layout
+
+- **Sticky dark header** — logo, tab navigation, pipeline status badge
+- **Tab-based navigation** — CTA Analysis / Risk & Clinical / MARTA Assessment / Treatment Sim
+- **Two-column grid** — left sidebar (controls/metrics) + right main panel (3D viewer, results)
+- **Consistent panel style** — `panelStyle` object: `background: T.panel, border: 1px solid T.border, borderRadius: 8`
+
+### Design Rules
+
+- No white backgrounds anywhere — use `T.surface` or `T.panel` only
+- Section titles use `T.cyan` with uppercase tracking (via `SectionHeader` component)
+- Critical findings (aneurysm detected, high WSS) use `T.orange` with `T.orangeDim` background
+- Probability bars: highest location uses `T.orange`, others use `T.blue`; relative width scaled to max
+- Buttons: gradient fills (`T.cyan → T.blue`) for primary actions; transparent with border for secondary
+- `Dot` component for status indicators with CSS `box-shadow` glow effect
+- All metric values use `MetricPill` component with optional `accent` color override
+
 ## Coding Standards
 
 - Type hints required on all Python function signatures
