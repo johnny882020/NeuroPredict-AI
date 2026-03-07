@@ -14,6 +14,7 @@
     "@cornerstonejs/dicom-image-loader": "^4.18.5",
     "@cornerstonejs/tools": "^4.18.5",
     "@kitware/vtk.js": "^34.16.3",
+    "dicom-parser": "^1.8.21",
     "@testing-library/dom": "^10.4.1",
     "axios": "^1.13.5",
     "jszip": "^3.10.1",

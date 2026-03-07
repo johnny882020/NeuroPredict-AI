@@ -11,7 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 import numpy as np
 
-from core.data_loader import process_scan, write_nifti_for_pipeline
+from core.data_loader import process_scan, write_nifti_for_pipeline, load_dicom_volume
 from core.segmentation import segmentation_model
 from core.extract_features import extract_morphology
 from core.risk_model import (
@@ -111,6 +111,11 @@ async def analyze_scan(file: UploadFile = File(...)):
         tmp_nifti_dir = tempfile.mkdtemp(prefix="neuropredict_nii_")
         series_dir = write_nifti_for_pipeline(data, Path(tmp_nifti_dir))
 
+    # Load DICOM volume for mesh generation before temp dir is cleaned up
+    dicom_volume: Optional[np.ndarray] = None
+    if mode == "dicom_dir":
+        dicom_volume = load_dicom_volume(series_dir)
+
     # 3. Run the RSNA three-stage pipeline
     try:
         rsna_result = segmentation_model.predict(series_dir)
@@ -123,13 +128,13 @@ async def analyze_scan(file: UploadFile = File(...)):
         if tmp_nifti_dir:
             shutil.rmtree(tmp_nifti_dir, ignore_errors=True)
 
-    # 4. Morphology and mesh (available when a NIfTI volume was provided)
+    # 4. Morphology and mesh
     morphology: dict = {}
     mesh_data: dict = {"vertices": [], "faces": [], "surface_area_mm2": 0.0, "volume_mm3": 0.0}
     baseline_cfd: dict = {}
 
-    if mode == "nifti" and isinstance(data, np.ndarray):
-        volume = data
+    volume: Optional[np.ndarray] = data if mode == "nifti" else dicom_volume
+    if isinstance(volume, np.ndarray):
         vessel_mask = (volume > 150).astype(np.uint8)
         if int(vessel_mask.sum()) > 100:
             morphology = extract_morphology(volume, vessel_mask)

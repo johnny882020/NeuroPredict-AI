@@ -1,12 +1,5 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
-
-// Design tokens (matches App.jsx T object)
-const T = {
-    bg: '#080c14', surface: '#0e1420', panel: '#141b2d',
-    border: '#1e2d48', textPri: '#e8edf5', textSec: '#5d7a9e',
-    textMuted: '#3a5070', cyan: '#06b6d4', cyanDim: '#0c4a5a',
-    orange: '#f97316',
-};
+import { useEffect, useRef, useState, useCallback, useContext } from 'react';
+import { ThemeCtx } from '../theme';
 
 const WINDOWING_PRESETS = {
     Brain:  { ww: 80,   wl: 40  },
@@ -23,7 +16,7 @@ const MEASURE_TOOLS = [
 ];
 
 const VIEWPORT_IDS = ['axial', 'sagittal', 'coronal'];
-const VIEWPORT_LABELS = { axial: 'AXIAL', sagittal: 'SAGITTAL', coronal: 'CORONAL' };
+const VIEWPORT_LABELS = { axial: 'VIEW A', sagittal: 'VIEW B', coronal: 'VIEW C' };
 
 // Lazy-loaded Cornerstone modules (only imported when component mounts)
 let csCore = null;
@@ -110,7 +103,7 @@ async function resolveImageIds(source) {
     // Individual .dcm file(s) — register with WADO-URI fileManager
     const rawFiles = isArray ? source : [singleFile];
     const sorted = await sortDcmFilesByInstance(rawFiles);
-    const ids = sorted.map(f => dicomImageLoader.wadouri.fileManager.add(f));
+    const ids = sorted.map(f => `wadouri:${dicomImageLoader.wadouri.fileManager.add(f)}`);
     return { ids, blobUrls: [] }; // fileManager manages memory; no blob URLs to revoke
 }
 
@@ -154,6 +147,7 @@ async function extractMeta(imageId, slices) {
 }
 
 export default function DicomViewer({ source }) {
+    const T = useContext(ThemeCtx);
     const containerRef = useRef(null);
     const engineRef = useRef(null);
     const toolGroupRef = useRef(null);
@@ -357,10 +351,10 @@ export default function DicomViewer({ source }) {
             }}>
                 <div style={{ fontSize: 40, marginBottom: 16, opacity: 0.3 }}>⬜</div>
                 <div style={{ fontSize: 14, fontWeight: 600, color: T.textSec }}>
-                    Upload a DICOM ZIP to view slices
+                    Load a DICOM series to begin viewing
                 </div>
                 <div style={{ fontSize: 12, color: T.textMuted, marginTop: 8 }}>
-                    Axial · Sagittal · Coronal multi-planar reconstruction
+                    Upload individual .dcm files or a .zip archive above
                 </div>
             </div>
         );
@@ -507,10 +501,11 @@ export default function DicomViewer({ source }) {
 }
 
 function InfoRow({ label, value }) {
+    const T = useContext(ThemeCtx);
     return (
         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, gap: 8 }}>
-            <span style={{ color: '#5d7a9e', flexShrink: 0 }}>{label}</span>
-            <span style={{ color: '#e8edf5', fontWeight: 600, textAlign: 'right', wordBreak: 'break-word' }}>{value}</span>
+            <span style={{ color: T.textSec, flexShrink: 0 }}>{label}</span>
+            <span style={{ color: T.textPri, fontWeight: 600, textAlign: 'right', wordBreak: 'break-word' }}>{value}</span>
         </div>
     );
 }

@@ -19,7 +19,7 @@ import logging
 import tempfile
 import zipfile
 from pathlib import Path
-from typing import Union
+from typing import Optional, Union
 
 import numpy as np
 
@@ -32,6 +32,14 @@ except ImportError:
     nib = None
     _HAS_NIBABEL = False
     log.warning("nibabel not installed — NIfTI upload support disabled.")
+
+try:
+    import pydicom
+    _HAS_PYDICOM = True
+except ImportError:
+    pydicom = None
+    _HAS_PYDICOM = False
+    log.warning("pydicom not installed — mesh generation disabled for DICOM ZIP uploads.")
 
 
 def extract_dicom_zip(file_bytes: bytes, out_dir: Path) -> Path:
@@ -69,6 +77,50 @@ def load_nifti_volume(file_bytes: bytes) -> np.ndarray:
 
     img = nib.load(tmp_path)
     volume: np.ndarray = img.get_fdata().astype(np.float32)
+    return volume
+
+
+def load_dicom_volume(series_dir: Union[str, Path]) -> Optional[np.ndarray]:
+    """
+    Load a DICOM series directory into a 3D float32 numpy array (HU values).
+
+    Slices are sorted by InstanceNumber tag. Returns None if pydicom is
+    unavailable, the directory has no .dcm files, or pixel arrays cannot be
+    stacked (e.g. variable matrix sizes).
+    """
+    if not _HAS_PYDICOM:
+        return None
+
+    series_dir = Path(series_dir)
+    dcm_files = sorted(series_dir.rglob("*.dcm")) + sorted(series_dir.rglob("*.DCM"))
+    if not dcm_files:
+        log.warning("load_dicom_volume: no .dcm files in %s", series_dir)
+        return None
+
+    slices = []
+    for f in dcm_files:
+        try:
+            slices.append(pydicom.dcmread(str(f)))
+        except Exception as exc:
+            log.debug("Skipping %s: %s", f, exc)
+
+    if not slices:
+        return None
+
+    slices.sort(key=lambda s: int(getattr(s, "InstanceNumber", 0)))
+
+    try:
+        volume = np.stack([s.pixel_array for s in slices], axis=0).astype(np.float32)
+    except Exception as exc:
+        log.warning("load_dicom_volume: could not stack pixel arrays: %s", exc)
+        return None
+
+    # Convert raw pixel values → Hounsfield Units using DICOM rescale tags
+    ref = slices[0]
+    slope = float(getattr(ref, "RescaleSlope", 1.0))
+    intercept = float(getattr(ref, "RescaleIntercept", 0.0))
+    volume = volume * slope + intercept
+    log.info("Loaded DICOM volume from %s: shape=%s", series_dir, volume.shape)
     return volume
 
 
