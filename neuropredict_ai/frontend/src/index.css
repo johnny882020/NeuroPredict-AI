@@ -2,8 +2,8 @@
   font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
   line-height: 1.5;
   font-weight: 400;
-  color: #e8edf5;
-  background-color: #080c14;
+  color: inherit;
+  background-color: transparent;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -23,8 +23,8 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  background-color: #080c14;
-  color: #e8edf5;
+  background-color: transparent;
+  color: inherit;
 }
 
 * {

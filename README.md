@@ -59,8 +59,8 @@ Upload CTA scan (.zip DICOM or .nii.gz NIfTI)
   + Preferred Modality             EVT vs NT (MARTA-guided)
         |
         v
-  Physician Decision ────────────── Accept / Modify / Override
-  (audit trail)                     Clinical reason required for override
+  Physician Decision ────────────── Accept / Modify / Override / Bypass
+  (audit trail)                     Reason required for override; bypass pre-fills audit note
 ```
 
 ---
@@ -512,7 +512,7 @@ cd neuropredict_ai/frontend && npm run lint
 git submodule update --init --recursive
 ```
 
-**Stack:** Python 3.11 · FastAPI 0.110+ · Pydantic v2 · NumPy · trimesh · scikit-image · React 19 · Vite 7 · VTK.js · Cornerstone.js 3 · JSZip · Vitest 4
+**Stack:** Python 3.11 · FastAPI 0.110+ · Pydantic v2 · NumPy · trimesh · scikit-image · React 19 · Vite 7 · VTK.js · Cornerstone.js 3 · JSZip · Vitest 4 · Themed (dark/light)
 
 ---
 

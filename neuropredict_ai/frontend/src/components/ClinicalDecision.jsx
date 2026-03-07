@@ -1,27 +1,5 @@
-import React, { useState } from 'react';
-
-const T = {
-    panel: '#141b2d', surface: '#0e1420', border: '#1e2d48',
-    textPri: '#e8edf5', textSec: '#5d7a9e', textMuted: '#3a5070',
-    cyan: '#06b6d4', cyanDim: '#0c4a5a',
-    orange: '#f97316', orangeDim: '#7c3c0d',
-    green: '#10b981', greenDim: '#064e3b',
-    red: '#ef4444', redDim: '#450a0a',
-    blue: '#3b82f6', blueDim: '#1e3a5f',
-    yellow: '#eab308', yellowDim: '#713f12',
-};
-
-const STRENGTH_COLORS = {
-    Strong:   { fg: T.orange, bg: T.orangeDim },
-    Moderate: { fg: T.blue,   bg: T.blueDim   },
-    Weak:     { fg: T.textSec, bg: T.surface  },
-};
-
-const DECISION_COLORS = {
-    accept:   { fg: T.green,  bg: T.greenDim,  label: 'Accepted' },
-    modify:   { fg: T.blue,   bg: T.blueDim,   label: 'Modified' },
-    override: { fg: T.orange, bg: T.orangeDim, label: 'Overridden' },
-};
+import { useState, useContext } from 'react';
+import { ThemeCtx } from '../theme';
 
 /**
  * Doctor-in-the-Loop recommendation card.
@@ -32,13 +10,34 @@ const DECISION_COLORS = {
  *   decision      — null | { type, reason, timestamp }
  */
 export default function ClinicalDecision({ synthesis, onDecision, decision }) {
+    const T = useContext(ThemeCtx);
     const [overrideMode, setOverrideMode] = useState(false);
     const [overrideReason, setOverrideReason] = useState('');
     const [reasonError, setReasonError] = useState(false);
 
     if (!synthesis) return null;
 
+    const STRENGTH_COLORS = {
+        Strong:   { fg: T.orange, bg: T.orangeDim },
+        Moderate: { fg: T.blue,   bg: T.blueDim   },
+        Weak:     { fg: T.textSec, bg: T.surface  },
+    };
+
+    const DECISION_COLORS = {
+        accept:   { fg: T.green,  bg: T.greenDim,  label: 'Accepted' },
+        modify:   { fg: T.blue,   bg: T.blueDim,   label: 'Modified' },
+        override: { fg: T.orange, bg: T.orangeDim, label: 'Overridden' },
+        bypass:   { fg: T.textSec, bg: T.surface,  label: 'Bypassed' },
+    };
+
     const strengthColor = STRENGTH_COLORS[synthesis.strength] || STRENGTH_COLORS.Weak;
+
+    const getRationaleIcon = (item) => {
+        const lower = item.toLowerCase();
+        if (lower.includes('high') || lower.includes('treatment')) return { icon: '▲', color: T.orange };
+        if (lower.includes('low') || lower.includes('conservative')) return { icon: '▼', color: T.green };
+        return { icon: '•', color: T.cyan };
+    };
 
     const handleAccept = () => {
         setOverrideMode(false);
@@ -48,6 +47,10 @@ export default function ClinicalDecision({ synthesis, onDecision, decision }) {
     const handleModify = () => {
         setOverrideMode(false);
         onDecision('modify', null);
+    };
+
+    const handleBypass = () => {
+        onDecision('bypass', 'Physician elected to proceed independently of system recommendation.');
     };
 
     const handleOverrideConfirm = () => {
@@ -161,7 +164,9 @@ export default function ClinicalDecision({ synthesis, onDecision, decision }) {
     // ── Pending recommendation state ──────────────────────────────────────
     return (
         <div style={{
-            background: T.surface, border: `1px solid ${T.border}`,
+            background: T.surface,
+            border: `1px solid ${T.border}`,
+            borderLeft: `4px solid ${strengthColor.fg}`,
             borderRadius: 8, padding: '16px 20px',
         }}>
             {/* Header */}
@@ -187,7 +192,7 @@ export default function ClinicalDecision({ synthesis, onDecision, decision }) {
 
             {/* Main recommendation */}
             <div style={{
-                fontSize: 16, fontWeight: 800, color: T.textPri,
+                fontSize: 17, fontWeight: 800, color: strengthColor.fg,
                 marginBottom: 14, lineHeight: 1.3,
             }}>
                 ▶ {synthesis.recommendation}
@@ -195,15 +200,18 @@ export default function ClinicalDecision({ synthesis, onDecision, decision }) {
 
             {/* Rationale bullets */}
             <div style={{ marginBottom: 14 }}>
-                {synthesis.rationale.map((item, i) => (
-                    <div key={i} style={{
-                        display: 'flex', gap: 8, marginBottom: 6,
-                        fontSize: 12, color: T.textSec, lineHeight: 1.5,
-                    }}>
-                        <span style={{ color: T.cyan, flexShrink: 0, marginTop: 1 }}>•</span>
-                        <span>{item}</span>
-                    </div>
-                ))}
+                {synthesis.rationale.map((item, i) => {
+                    const { icon, color } = getRationaleIcon(item);
+                    return (
+                        <div key={i} style={{
+                            display: 'flex', gap: 8, marginBottom: 6,
+                            fontSize: 12, color: T.textSec, lineHeight: 1.5,
+                        }}>
+                            <span style={{ color, flexShrink: 0, marginTop: 1 }}>{icon}</span>
+                            <span>{item}</span>
+                        </div>
+                    );
+                })}
             </div>
 
             {/* Disclaimer */}
@@ -237,6 +245,13 @@ export default function ClinicalDecision({ synthesis, onDecision, decision }) {
                     border: `1px solid ${T.orange}44`, borderRadius: 6, cursor: 'pointer',
                 }}>
                     ✗ Override
+                </button>
+                <button onClick={handleBypass} style={{
+                    flex: 1, padding: '9px 0', fontSize: 12, fontWeight: 700,
+                    background: T.surface, color: T.textMuted,
+                    border: `1px solid ${T.border}`, borderRadius: 6, cursor: 'pointer',
+                }}>
+                    ⊘ Bypass
                 </button>
             </div>
         </div>

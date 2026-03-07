@@ -1,4 +1,5 @@
-import { useState, Suspense, lazy } from 'react';
+import { useState, useEffect, Suspense, lazy, useContext } from 'react';
+import { DARK, LIGHT, ThemeCtx } from './theme';
 import { uploadScan, predictRisk, simulateTreatment, assessMARTA } from './api';
 const Viewer3D = lazy(() => import('./components/Viewer3D'));
 const DicomViewer = lazy(() => import('./components/DicomViewer'));
@@ -6,62 +7,7 @@ import ClinicalForm from './components/ClinicalForm';
 import MARTAForm from './components/MARTAForm';
 import ClinicalDecision from './components/ClinicalDecision';
 
-// ── Design tokens (dark medical workstation) ──────────────────────────────────
-const T = {
-    bg:       '#080c14',
-    surface:  '#0e1420',
-    panel:    '#141b2d',
-    border:   '#1e2d48',
-    borderSub:'#162038',
-    textPri:  '#e8edf5',
-    textSec:  '#5d7a9e',
-    textMuted:'#3a5070',
-    orange:   '#f97316',
-    orangeDim:'#7c3c0d',
-    cyan:     '#06b6d4',
-    cyanDim:  '#0c4a5a',
-    blue:     '#3b82f6',
-    blueDim:  '#1e3a5f',
-    green:    '#10b981',
-    greenDim: '#064e3b',
-    red:      '#ef4444',
-    redDim:   '#450a0a',
-    purple:   '#a855f7',
-    purpleDim:'#3b0764',
-};
-
-const RISK_COLOR = { Low: T.green, Moderate: T.orange, High: T.red };
-const RISK_DIM   = { Low: T.greenDim, Moderate: T.orangeDim, High: T.redDim };
-
-// ── Shared component styles ───────────────────────────────────────────────────
-const panelStyle = {
-    background: T.panel,
-    border: `1px solid ${T.border}`,
-    borderRadius: 8,
-    marginBottom: 16,
-};
-
-const labelStyle = {
-    fontSize: 10,
-    fontWeight: 600,
-    letterSpacing: '0.08em',
-    textTransform: 'uppercase',
-    color: T.textSec,
-    marginBottom: 4,
-    display: 'block',
-};
-
-const sectionTitle = {
-    fontSize: 12,
-    fontWeight: 700,
-    letterSpacing: '0.1em',
-    textTransform: 'uppercase',
-    color: T.cyan,
-    margin: '0 0 14px 0',
-    display: 'flex',
-    alignItems: 'center',
-    gap: 8,
-};
+// ── Shared component styles (theme-independent) ───────────────────────────────
 
 const btnBase = {
     border: 'none',
@@ -74,8 +20,8 @@ const btnBase = {
     transition: 'opacity 0.15s',
 };
 
-// ── Sub-components ────────────────────────────────────────────────────────────
-const Dot = ({ color = T.cyan, size = 7 }) => (
+// ── Sub-components (read theme from context) ──────────────────────────────────
+const Dot = ({ color = DARK.cyan, size = 7 }) => (
     <span style={{
         display: 'inline-block',
         width: size, height: size,
@@ -86,41 +32,49 @@ const Dot = ({ color = T.cyan, size = 7 }) => (
     }} />
 );
 
-const MetricPill = ({ label, value, unit, accent }) => (
-    <div style={{
-        background: T.surface,
-        border: `1px solid ${accent ? accent + '44' : T.borderSub}`,
-        borderRadius: 6,
-        padding: '8px 12px',
-    }}>
-        <div style={{ ...labelStyle, marginBottom: 2 }}>{label}</div>
-        <div style={{ fontSize: 18, fontWeight: 700, color: accent || T.textPri, lineHeight: 1.1 }}>
-            {value}
-            {unit && <span style={{ fontSize: 11, fontWeight: 400, color: T.textSec, marginLeft: 3 }}>{unit}</span>}
+const MetricPill = ({ label, value, unit, accent }) => {
+    const T = useContext(ThemeCtx);
+    const labelStyle = { fontSize: 10, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: T.textSec, marginBottom: 2, display: 'block' };
+    return (
+        <div style={{
+            background: T.surface,
+            border: `1px solid ${accent ? accent + '44' : T.borderSub}`,
+            borderRadius: 6,
+            padding: '8px 12px',
+        }}>
+            <div style={labelStyle}>{label}</div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: accent || T.textPri, lineHeight: 1.1 }}>
+                {value}
+                {unit && <span style={{ fontSize: 11, fontWeight: 400, color: T.textSec, marginLeft: 3 }}>{unit}</span>}
+            </div>
         </div>
-    </div>
-);
+    );
+};
 
-const SectionHeader = ({ icon, title, badge }) => (
-    <div style={{ ...sectionTitle }}>
-        {icon && <span style={{ fontSize: 14 }}>{icon}</span>}
-        {title}
-        {badge && (
-            <span style={{
-                marginLeft: 'auto',
-                fontSize: 10,
-                fontWeight: 700,
-                padding: '2px 8px',
-                borderRadius: 4,
-                background: T.cyanDim,
-                color: T.cyan,
-                letterSpacing: '0.05em',
-            }}>{badge}</span>
-        )}
-    </div>
-);
+const SectionHeader = ({ icon, title, badge }) => {
+    const T = useContext(ThemeCtx);
+    return (
+        <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: T.cyan, margin: '0 0 14px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
+            {icon && <span style={{ fontSize: 14 }}>{icon}</span>}
+            {title}
+            {badge && (
+                <span style={{
+                    marginLeft: 'auto',
+                    fontSize: 10,
+                    fontWeight: 700,
+                    padding: '2px 8px',
+                    borderRadius: 4,
+                    background: T.cyanDim,
+                    color: T.cyan,
+                    letterSpacing: '0.05em',
+                }}>{badge}</span>
+            )}
+        </div>
+    );
+};
 
 const ProbBar = ({ label, prob, maxProb }) => {
+    const T = useContext(ThemeCtx);
     const pct = (prob * 100).toFixed(1);
     const relWidth = maxProb > 0 ? (prob / maxProb) * 100 : prob * 100;
     const isTop = relWidth > 80;
@@ -149,6 +103,20 @@ const ProbBar = ({ label, prob, maxProb }) => {
 
 // ── Main App ──────────────────────────────────────────────────────────────────
 function App() {
+    const [darkMode, setDarkMode] = useState(true);
+    const T = darkMode ? DARK : LIGHT;
+
+    useEffect(() => {
+        document.body.style.backgroundColor = T.bg;
+        document.body.style.color = T.textPri;
+    }, [T.bg, T.textPri]);
+
+    // Theme-dependent style objects (recomputed on theme change)
+    const panelStyle = { background: T.panel, border: `1px solid ${T.border}`, borderRadius: 8, marginBottom: 16 };
+    const labelStyle = { fontSize: 10, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: T.textSec, marginBottom: 4, display: 'block' };
+    const RISK_COLOR = { Low: T.green, Moderate: T.orange, High: T.red };
+    const RISK_DIM   = { Low: T.greenDim, Moderate: T.orangeDim, High: T.redDim };
+
     const [file, setFile] = useState(null);
     const [dicomFiles, setDicomFiles] = useState(null);
     const [scanData, setScanData] = useState(null);
@@ -290,6 +258,7 @@ function App() {
     const maxLocProb = sortedLocs[0]?.[1] ?? 1;
 
     return (
+        <ThemeCtx.Provider value={T}>
         <div style={{
             fontFamily: "'Inter', 'Segoe UI', system-ui, sans-serif",
             background: T.bg,
@@ -322,7 +291,7 @@ function App() {
                             NeuroPredict<span style={{ color: T.cyan }}>AI</span>
                         </div>
                         <div style={{ fontSize: 9, color: T.textMuted, letterSpacing: '0.1em', textTransform: 'uppercase', marginTop: -1 }}>
-                            Intracranial Aneurysm Platform
+                            We find the aneurysm before it finds you.
                         </div>
                     </div>
                 </div>
@@ -358,6 +327,14 @@ function App() {
                         background: T.cyanDim, color: T.cyan,
                         letterSpacing: '0.05em',
                     }}>AUC 0.916</span>
+                    <button onClick={() => setDarkMode(d => !d)} style={{
+                        ...btnBase, padding: '4px 10px',
+                        background: 'transparent',
+                        border: `1px solid ${T.border}`,
+                        color: T.textSec, fontSize: 11, fontWeight: 600,
+                    }}>
+                        {darkMode ? '○ Light' : '◑ Dark'}
+                    </button>
                 </div>
             </header>
 
@@ -1273,13 +1250,14 @@ function App() {
                 marginTop: 20,
             }}>
                 <span style={{ fontSize: 10, color: T.textMuted }}>
-                    NeuroPredict AI v2.1 · RSNA 2025 Pipeline · For research use only
+                    © 2026 NeuroPredict AI · RSNA 2025 Pipeline · For research use only
                 </span>
                 <span style={{ fontSize: 10, color: T.textMuted }}>
-                    Not for clinical diagnosis
+                    v2.1 · Not for clinical diagnosis
                 </span>
             </footer>
         </div>
+        </ThemeCtx.Provider>
     );
 }
 

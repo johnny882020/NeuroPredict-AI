@@ -1,0 +1,53 @@
+import { createContext } from 'react';
+
+export const DARK = {
+    bg:       '#080c14',
+    surface:  '#0e1420',
+    panel:    '#141b2d',
+    border:   '#1e2d48',
+    borderSub:'#162038',
+    textPri:  '#e8edf5',
+    textSec:  '#5d7a9e',
+    textMuted:'#3a5070',
+    orange:   '#f97316',
+    orangeDim:'#7c3c0d',
+    cyan:     '#06b6d4',
+    cyanDim:  '#0c4a5a',
+    blue:     '#3b82f6',
+    blueDim:  '#1e3a5f',
+    green:    '#10b981',
+    greenDim: '#064e3b',
+    red:      '#ef4444',
+    redDim:   '#450a0a',
+    purple:   '#a855f7',
+    purpleDim:'#3b0764',
+    yellow:   '#eab308',
+    yellowDim:'#713f12',
+};
+
+export const LIGHT = {
+    bg:       '#f0f4f8',
+    surface:  '#ffffff',
+    panel:    '#ffffff',
+    border:   '#c8d8ec',
+    borderSub:'#dce8f5',
+    textPri:  '#0f172a',
+    textSec:  '#334d6a',
+    textMuted:'#64829b',
+    orange:   '#ea6c00',
+    orangeDim:'#fff7ed',
+    cyan:     '#0891b2',
+    cyanDim:  '#e0f7fc',
+    blue:     '#2563eb',
+    blueDim:  '#eff6ff',
+    green:    '#059669',
+    greenDim: '#f0fdf4',
+    red:      '#dc2626',
+    redDim:   '#fef2f2',
+    purple:   '#9333ea',
+    purpleDim:'#faf5ff',
+    yellow:   '#ca8a04',
+    yellowDim:'#fefce8',
+};
+
+export const ThemeCtx = createContext(DARK);
