@@ -6,7 +6,8 @@ export const uploadScan = async (file) => {
     const formData = new FormData();
     formData.append('file', file);
     const response = await axios.post(`${API_BASE}/analyze_and_mesh`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
+        headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 180000,
     });
     return response.data;
 };

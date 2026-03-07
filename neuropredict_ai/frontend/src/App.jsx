@@ -202,7 +202,11 @@ function App() {
             setRiskData(null);
             setSimulation(null);
         } catch (err) {
-            setError('Upload failed: ' + (err.response?.data?.detail || err.message));
+            if (err.code === 'ECONNABORTED') {
+                setError('Analysis timed out. Try a smaller .zip or convert to .nii.gz first.');
+            } else {
+                setError('Upload failed: ' + (err.response?.data?.detail || err.message));
+            }
         }
         setLoading(false);
     };
@@ -450,7 +454,7 @@ function App() {
                                 <input
                                     type="file"
                                     onChange={e => setFile(e.target.files[0])}
-                                    accept=".zip,.nii,.nii.gz,.dcm"
+                                    accept=".zip,.nii,.nii.gz"
                                     style={{
                                         display: 'block',
                                         width: '100%', marginBottom: 8,
@@ -462,7 +466,7 @@ function App() {
                                     }}
                                 />
                                 <p style={{ fontSize: 10, color: T.textMuted, margin: '0 0 12px 0' }}>
-                                    .zip (DICOM series) · .nii.gz (NIfTI) · .dcm (DICOM)
+                                    .zip (DICOM series) · .nii.gz / .nii (NIfTI) — for AI analysis. Use the DICOM View tab to load individual .dcm files.
                                 </p>
                                 <button
                                     onClick={handleUpload}
@@ -479,7 +483,7 @@ function App() {
                                         opacity: loading ? 0.7 : 1,
                                     }}
                                 >
-                                    {loading ? '⚙ Processing…' : '▶  Analyze CTA Scan'}
+                                    {loading ? '⚙ Analyzing — may take 30–60 s…' : '▶  Analyze CTA Scan'}
                                 </button>
                             </div>
 
@@ -608,8 +612,8 @@ function App() {
                                 padding: 16,
                                 minHeight: 420,
                             }}>
-                                <SectionHeader icon="◈" title="3D Vessel Morphology" badge={mesh ? 'MESH READY' : 'AWAITING SCAN'} />
-                                {mesh ? (
+                                <SectionHeader icon="◈" title="3D Vessel Morphology" badge={scanData ? (mesh?.vertices?.length > 0 ? 'MESH READY' : 'SCAN READY') : 'AWAITING SCAN'} />
+                                {mesh?.vertices?.length > 0 ? (
                                     <div style={{
                                         borderRadius: 6,
                                         overflow: 'hidden',
@@ -868,7 +872,24 @@ function App() {
                                 );
                             })()}
 
-                            {!riskData && !riskLoading && (
+                            {!riskData && !riskLoading && !scanData && (
+                                <div style={{
+                                    ...panelStyle, padding: 40,
+                                    textAlign: 'center', minHeight: 300,
+                                    display: 'flex', flexDirection: 'column',
+                                    alignItems: 'center', justifyContent: 'center',
+                                }}>
+                                    <div style={{ fontSize: 36, opacity: 0.15, marginBottom: 16 }}>⬆</div>
+                                    <div style={{ color: T.textSec, fontSize: 14, fontWeight: 600, marginBottom: 8 }}>
+                                        No Scan Loaded
+                                    </div>
+                                    <div style={{ color: T.textMuted, fontSize: 12, lineHeight: 1.7, maxWidth: 340 }}>
+                                        Go to <strong style={{ color: T.cyan }}>CTA Analysis</strong> and upload a .zip DICOM series or .nii.gz file first, then return here to compute risk scores.
+                                    </div>
+                                </div>
+                            )}
+
+                            {!riskData && !riskLoading && scanData && (
                                 <div style={{
                                     ...panelStyle, padding: 40,
                                     textAlign: 'center', minHeight: 300,
@@ -877,7 +898,7 @@ function App() {
                                 }}>
                                     <div style={{ fontSize: 36, opacity: 0.15, marginBottom: 16 }}>◎</div>
                                     <div style={{ color: T.textSec, fontSize: 14, fontWeight: 600, marginBottom: 8 }}>
-                                        Risk Scoring Ready
+                                        Scan Ready — Calculate Risk
                                     </div>
                                     <div style={{ color: T.textMuted, fontSize: 12, lineHeight: 1.7, maxWidth: 340 }}>
                                         Fill the clinical form and click <strong style={{ color: T.cyan }}>Calculate Risk Scores</strong>
@@ -1252,7 +1273,7 @@ function App() {
                 marginTop: 20,
             }}>
                 <span style={{ fontSize: 10, color: T.textMuted }}>
-                    NeuroPredict AI v2.0 · RSNA 2025 Pipeline · For research use only
+                    NeuroPredict AI v2.1 · RSNA 2025 Pipeline · For research use only
                 </span>
                 <span style={{ fontSize: 10, color: T.textMuted }}>
                     Not for clinical diagnosis

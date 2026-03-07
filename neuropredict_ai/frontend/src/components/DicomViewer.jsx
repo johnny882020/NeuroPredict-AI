@@ -236,7 +236,7 @@ export default function DicomViewer({ source }) {
                 await csCore.init();
                 await csTools.init();
 
-                dicomImageLoader.configure({
+                dicomImageLoader.wadouri.configure({
                     useWebWorkers: true,
                     decodeConfig: { usePDFJS: false },
                 });
