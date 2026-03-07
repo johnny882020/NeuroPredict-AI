@@ -5,6 +5,7 @@ from typing import Optional
 
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -31,6 +32,7 @@ app = FastAPI(
 
 FRONTEND_DIR = Path(__file__).parent / "frontend" / "dist"
 
+app.add_middleware(GZipMiddleware, minimum_size=1000)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -56,7 +58,7 @@ class MorphologyData(BaseModel):
 
 
 @app.get("/health")
-def health_check():
+async def health_check():
     return {
         "status": "healthy",
         "rsna_pipeline": "ready" if segmentation_model.is_available else "weights_required",
@@ -143,7 +145,7 @@ async def analyze_scan(file: UploadFile = File(...)):
 
 
 @app.post("/predict_risk")
-def predict_risk(
+async def predict_risk(
     clinical: ClinicalData,
     morph: MorphologyData,
     rsna_probability: Optional[float] = None,
@@ -169,22 +171,21 @@ def predict_risk(
 
 
 @app.post("/marta_assessment")
-def marta_assessment(data: MARTAInput):
+async def marta_assessment(data: MARTAInput):
     """MARTA Score: EVT and NT complication probabilities."""
     result = marta_calc.assess(data)
     return result.model_dump()
 
 
 @app.post("/simulate_treatment")
-def simulate_treatment(treatment_type: str, baseline_wss_pa: float, baseline_osi: float):
+async def simulate_treatment(treatment_type: str, baseline_wss_pa: float, baseline_osi: float):
     """Phase 3: Simulates device placement outcomes."""
     baseline_stats = {
         "mean_wss_pa": baseline_wss_pa,
         "max_wss_pa": baseline_wss_pa * 2.5,
         "mean_osi": baseline_osi,
     }
-    post_treatment = hemodynamics_sim.simulate_treatment(treatment_type, baseline_stats)
-    return post_treatment
+    return hemodynamics_sim.simulate_treatment(treatment_type, baseline_stats)
 
 
 # Serve frontend static files (must be after API routes)

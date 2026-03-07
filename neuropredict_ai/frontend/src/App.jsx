@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, Suspense, lazy } from 'react';
 import { uploadScan, predictRisk, simulateTreatment, assessMARTA } from './api';
-import Viewer3D from './components/Viewer3D';
+const Viewer3D = lazy(() => import('./components/Viewer3D'));
 import ClinicalForm from './components/ClinicalForm';
 import MARTAForm from './components/MARTAForm';
 
@@ -524,11 +524,13 @@ function App() {
                                         overflow: 'hidden',
                                         border: `1px solid ${T.border}`,
                                     }}>
+                                        <Suspense fallback={<div style={{height:400,display:'flex',alignItems:'center',justifyContent:'center',color:T.textSec}}>Loading 3D viewer…</div>}>
                                         <Viewer3D
                                             meshData={mesh}
                                             vertexWss={vertexWss}
                                             wssRange={wssRange}
                                         />
+                                        </Suspense>
                                     </div>
                                 ) : (
                                     <div style={{
