@@ -4,7 +4,7 @@ FROM node:20-slim AS frontend-build
 WORKDIR /frontend
 
 COPY neuropredict_ai/frontend/package.json neuropredict_ai/frontend/package-lock.json ./
-RUN npm ci --production=false
+RUN npm ci --production=false --legacy-peer-deps
 
 COPY neuropredict_ai/frontend/ ./
 RUN NODE_OPTIONS="--max-old-space-size=1536" npm run build
