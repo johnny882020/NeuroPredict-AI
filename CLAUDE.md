@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-NeuroPredict AI is a medical AI platform for intracranial aneurysm rupture risk prediction and treatment simulation. It combines a Python/FastAPI backend with a React frontend. The core analysis pipeline is powered by the **RSNA 2025 1st place solution** (AUC 0.916) for CTA scan analysis.
+NeuroPredict AI is a medical AI platform for intracranial aneurysm rupture risk prediction and treatment simulation. It combines a Python/FastAPI backend with a React frontend. The core analysis pipeline is powered by the **RSNA 2025 1st place solution** (AUC 0.916) for CTA scan analysis. The platform implements evidence-based clinical scoring (PHASES, UIATS) with a doctor-in-the-loop decision workflow.
 
 ## Commands
 
@@ -20,12 +20,14 @@ python main.py
 # or
 uvicorn main:app --reload --host 0.0.0.0 --port 8000
 
-# Run all tests
+# Run all tests (72 tests)
 cd neuropredict_ai
 pytest
 
 # Run a single test file
+pytest tests/test_risk_model.py
 pytest tests/test_marta_score.py
+pytest tests/test_api.py
 
 # Run a single test
 pytest tests/test_api.py::test_health_check
@@ -44,8 +46,10 @@ npm install
 npm run dev        # Dev server (Vite)
 npm run build      # Build to dist/
 npm run lint       # ESLint
-npx vitest         # Run tests
-npx vitest run src/App.test.jsx  # Run single test file
+npx vitest run     # Run all tests (24 tests)
+npx vitest run src/App.test.jsx                        # App + tab navigation tests
+npx vitest run src/components/ClinicalForm.test.jsx    # ClinicalForm component tests
+npx vitest run src/components/ClinicalDecision.test.jsx # Decision workflow tests
 ```
 
 ### Docker
@@ -79,7 +83,7 @@ modal deploy deploy/modal_app.py
 
 ### Backend (`neuropredict_ai/`)
 
-The FastAPI app in `main.py` runs as a single process serving both the API and the built frontend static files. All core modules use singleton instances exported at module level.
+The FastAPI app in `main.py` runs as a single process serving both the API and the built frontend static files.
 
 **Pipeline flow for `POST /analyze_and_mesh`:**
 1. `core/data_loader.py` — detects format (.zip DICOM or .nii.gz NIfTI) and extracts/loads scan
@@ -92,15 +96,51 @@ The FastAPI app in `main.py` runs as a single process serving both the API and t
 5. `core/hemodynamics.py` — generates 3D mesh (marching cubes) and simulates hemodynamics (WSS, OSI)
 
 **Other endpoints:**
-- `POST /predict_risk` — `core/risk_model.py`: UIATS score + heuristic ML; accepts optional `?rsna_probability=` query param to incorporate RSNA result
+- `POST /predict_risk` — `core/risk_model.py`: PHASES + UIATS scoring + synthesis recommendation; accepts optional query params `rsna_probability`, `marta_evt_pct`, `marta_nt_pct`
 - `POST /marta_assessment` — `core/marta_score.py`: MARTA-EVT and MARTA-NT logistic models
 - `POST /simulate_treatment` — `core/hemodynamics.py`: post-treatment hemodynamic simulation (types: `flow_diverter`, `surgical_clip`)
+
+**`POST /predict_risk` response schema:**
+```json
+{
+  "phases": {
+    "phases_score": 6,
+    "five_year_rupture_risk_pct": 1.7,
+    "risk_tier": "Intermediate",
+    "evidence_level": "A",
+    "citation": "Greving et al., Lancet Neurol 2014"
+  },
+  "uiats": {
+    "net_score": 5,
+    "treatment_score": 6,
+    "conservative_score": 1,
+    "recommendation": "Treatment recommended",
+    "breakdown": {...},
+    "evidence_level": "B"
+  },
+  "synthesis": {
+    "recommendation": "Treatment — Endovascular (EVT)",
+    "strength": "Strong",
+    "rationale": ["PHASES 5-yr risk: 1.7% (Intermediate)", "UIATS net: +5 — Treatment recommended"],
+    "preferred_modality": "EVT",
+    "evidence_level": "B",
+    "disclaimer": "For clinical decision support only. Physician judgment supersedes all recommendations."
+  },
+  "ai_rupture_probability": 0.42,
+  "probability_source": "heuristic"
+}
+```
+
+**`core/risk_model.py` — module-level functions (not class singletons):**
+- `calculate_phases_score(clinical: dict) -> dict` — PHASES scoring (Evidence A, Greving 2014)
+- `calculate_uiats_score(clinical: dict, morph: dict) -> dict` — UIATS two-column scoring (Evidence B, Etminan 2015)
+- `synthesize_recommendation(phases, uiats, marta_evt_pct, marta_nt_pct, rsna_probability) -> dict`
+- `heuristic_rupture_probability(clinical: dict, morph: dict) -> float`
 
 **Key design decisions:**
 - RSNA pipeline falls back gracefully when `VESSEL_NNUNET_MODEL_DIR` is unset (returns 0.1 probability, `pipeline: "unavailable"`). All other endpoints continue working.
 - Upload formats: `.zip` (DICOM series) or `.nii.gz` / `.nii` (NIfTI volume)
-- All core classes are module-level singletons: `uiats_calc`, `ml_predictor`, `marta_calc`, `hemodynamics_sim`, `segmentation_model`, `rsna_pipeline`
-- Version: `2.0.0`
+- Version: `2.1.0`
 
 **RSNA pipeline environment variables** (set to enable GPU inference):
 ```
@@ -118,17 +158,33 @@ See `.env.example` for the full list.
 
 React 19 + Vite app. No state management library — uses `useState` hooks in `App.jsx`.
 
+**Default `activeTab` is `'analysis'`** (CTA Analysis tab renders on load).
+
+**5-tab navigation:**
+1. `'dicom'` — DICOM View: Cornerstone.js multi-planar DICOM viewer
+2. `'analysis'` — CTA Analysis: file upload, AI detection banner, morphology metrics, 3D viewer
+3. `'risk'` — Risk & Clinical: `ClinicalForm` + `ClinicalDecision` panel
+4. `'marta'` — MARTA Assessment: `MARTAForm` with EVT/NT risk output
+5. `'treatment'` — Treatment Sim: hemodynamic simulation controls (gated: requires scanData)
+
+**Key components:**
 - `src/api.js` — all API calls via axios; uses `VITE_API_URL` env var (defaults to same-origin)
+- `src/components/DicomViewer.jsx` — Cornerstone.js DICOM viewer (`React.lazy()`), multi-planar (axial/coronal/sagittal), windowing presets
 - `src/components/Viewer3D.jsx` — 3D mesh rendering with VTK.js (`@kitware/vtk.js`)
-- `src/components/ClinicalForm.jsx` — clinical data input for UIATS/ML risk
+- `src/components/ClinicalForm.jsx` — PHASES + UIATS input fields; pre-fills `aneurysm_size_mm` from `scanData.morphology.maximum_3d_diameter_mm`
+- `src/components/ClinicalDecision.jsx` — Doctor-in-the-loop: Accept / Modify / Override with reason; returns `null` when `synthesis` prop is null
 - `src/components/MARTAForm.jsx` — full MARTA assessment form
 
 The frontend is built and served as static files by FastAPI from `frontend/dist/`. API routes in `main.py` must be declared before the catch-all frontend route.
 
-**New UI features (v2.0.0):**
-- AI Detection Banner: shows `aneurysm_probability` as %, color-coded bar, top-5 location probabilities
-- File input accepts `.zip`, `.nii`, `.nii.gz` only
-- RSNA probability fed into risk prediction automatically
+**Bundle splitting (code splitting via dynamic import):**
+| Chunk | Size (gzip) | Purpose |
+|-------|------------|---------|
+| vtk | ~102 KB | 3D mesh rendering |
+| cornerstone-loader | ~73 KB | DICOM file loading |
+| cornerstone | ~859 KB | DICOM viewing engine |
+
+**Treatment Sim tab gating:** Without `scanData`, the tab shows "Analyze a CTA scan first to enable treatment simulation" instead of treatment buttons.
 
 ### Vendor Submodule (`neuropredict_ai/vendor/rsna2025/`)
 
@@ -146,6 +202,19 @@ Initialize with: `git submodule update --init --recursive`
 | RunPod / Modal | `Dockerfile.gpu` | CUDA 12.1, GPU required, mount weights at `/weights` |
 
 Health check: `GET /health` → `{"status": "healthy", "rsna_pipeline": "ready"|"weights_required"}`
+
+## Test Suite
+
+**Backend (72 tests):**
+- `tests/test_risk_model.py` — 34 tests: PHASES scoring, UIATS scoring, synthesis, heuristic probability
+- `tests/test_api.py` — 9 tests: all endpoints with schema validation and edge cases
+- `tests/test_marta_score.py` — MARTA-EVT and MARTA-NT logistic model tests
+- `tests/test_hemodynamics.py` — hemodynamic simulation and mesh generation tests
+
+**Frontend (24 tests, Vitest + React Testing Library):**
+- `src/App.test.jsx` — 8 tests: tab navigation, ClinicalForm display, treatment gating, DICOM placeholder
+- `src/components/ClinicalDecision.test.jsx` — 9 tests: accept/override workflow, null synthesis
+- `src/components/ClinicalForm.test.jsx` — 7 tests: field rendering, scanData pre-fill, submit
 
 ## Frontend Design System
 
@@ -171,7 +240,7 @@ The UI follows a **dark medical workstation** aesthetic (PACS-style, inspired by
 ### Layout
 
 - **Sticky dark header** — logo, tab navigation, pipeline status badge
-- **Tab-based navigation** — CTA Analysis / Risk & Clinical / MARTA Assessment / Treatment Sim
+- **5-tab navigation** — DICOM View / CTA Analysis / Risk & Clinical / MARTA Assessment / Treatment Sim
 - **Two-column grid** — left sidebar (controls/metrics) + right main panel (3D viewer, results)
 - **Consistent panel style** — `panelStyle` object: `background: T.panel, border: 1px solid T.border, borderRadius: 8`
 
