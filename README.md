@@ -25,7 +25,7 @@ NeuroPredict AI integrates a real-time CTA analysis pipeline with validated clin
 | 5-year rupture risk (PHASES score) | Greving et al., *Lancet Neurol* 2014 | A |
 | Treatment decision score (UIATS) | Etminan et al., *Lancet* 2015 | B |
 | Procedural risk (MARTA score) | Logistic model, PMC6439725 | B |
-| Multi-planar DICOM viewer | Cornerstone.js (Axial/Sagittal/Coronal) | — |
+| Multi-planar DICOM viewer (.zip + .dcm) | Cornerstone.js (Axial/Sagittal/Coronal) + measurement tools | — |
 | 3D vessel morphology + hemodynamics | Marching cubes + WSS/OSI proxy | Computational |
 | Doctor-in-the-loop workflow | Accept / Modify / Override + audit trail | — |
 
@@ -293,7 +293,7 @@ neuropredict_ai/
     │   ├── App.jsx              # 5-tab dashboard, all state + handlers
     │   ├── api.js               # Axios API layer (uploadScan, predictRisk, ...)
     │   └── components/
-    │       ├── DicomViewer.jsx      # Cornerstone.js 3-plane MPR (lazy-loaded)
+    │       ├── DicomViewer.jsx      # Cornerstone.js 3-plane MPR (lazy-loaded); accepts ZIP or .dcm files; Length/Angle/ROI/Probe tools
     │       ├── ClinicalForm.jsx     # PHASES + UIATS input form
     │       ├── ClinicalDecision.jsx # Accept/Modify/Override decision workflow
     │       ├── MARTAForm.jsx        # MARTA procedural risk input form
@@ -335,6 +335,32 @@ POST /analyze_and_mesh
 | `vtk.js` | ~102 KB | First visit to CTA Analysis tab |
 | `cornerstone.js` | ~859 KB | First visit to DICOM View tab |
 | `cornerstone-loader.js` | ~73 KB | First visit to DICOM View tab |
+
+---
+
+## DICOM Web Viewer
+
+The **DICOM View** tab provides a browser-native clinical viewer without any server-side processing.
+
+### Supported Inputs
+| Source | How to load |
+|--------|------------|
+| DICOM series (`.zip`) | Analyze in CTA Analysis tab — viewer auto-loads |
+| Individual `.dcm` files | Use the "Load DICOM Files" uploader in the DICOM View tab (multi-select) |
+
+### Features
+- **Multi-planar reconstruction (MPR)** — simultaneous Axial / Coronal / Sagittal viewports
+- **Windowing presets** — Brain (W:80/L:40), Bone (W:2800/L:600), Angio (W:600/L:300), Lung (W:1500/L:-600)
+- **Scroll / zoom / pan** — mouse wheel, right-click drag
+- **Measurement tools** — Length (↔), Angle (∠), Elliptical ROI (◯ — shows area + HU statistics), HU Probe (·)
+- **DICOM metadata panel** — Patient name, Study Date, Modality, Series Description, Slice Thickness, Pixel Spacing
+- **No server upload for .dcm** — files are registered locally via Cornerstone.js `wadouri.fileManager`, keeping PHI on the client
+
+### Measurement Workflow
+1. Click a measure tool button (Length, Angle, ROI, HU Probe)
+2. Draw on any viewport — annotation appears with live value
+3. Click **Navigate** to return left-click to window/level mode
+4. Click **Clear** to remove all annotations
 
 ---
 
@@ -492,6 +518,10 @@ git submodule update --init --recursive
 
 ## Roadmap
 
+- [x] Individual `.dcm` file loading in DICOM viewer (v2.1)
+- [x] Measurement tools — Length, Angle, Elliptical ROI, HU Probe (v2.1)
+- [x] PHASES score visual bar + UIATS breakdown chips in Risk tab (v2.1)
+- [x] Treatment Sim device cards with clinical context + pre/post comparison table (v2.1)
 - [ ] DICOM crosshair synchronization across 3 planes
 - [ ] PDF export — physician decision + evidence rationale report
 - [ ] Multi-aneurysm session (track multiple lesions per patient encounter)

@@ -139,7 +139,7 @@ The FastAPI app in `main.py` runs as a single process serving both the API and t
 
 **Key design decisions:**
 - RSNA pipeline falls back gracefully when `VESSEL_NNUNET_MODEL_DIR` is unset (returns 0.1 probability, `pipeline: "unavailable"`). All other endpoints continue working.
-- Upload formats: `.zip` (DICOM series) or `.nii.gz` / `.nii` (NIfTI volume)
+- Upload formats: `.zip` (DICOM series), `.nii.gz` / `.nii` (NIfTI volume), or individual `.dcm` files (DICOM tab only; viewed client-side via WADO-URI `fileManager.add()`, not sent to backend)
 - Version: `2.1.0`
 
 **RSNA pipeline environment variables** (set to enable GPU inference):
@@ -160,8 +160,13 @@ React 19 + Vite app. No state management library — uses `useState` hooks in `A
 
 **Default `activeTab` is `'analysis'`** (CTA Analysis tab renders on load).
 
+**Key App state:**
+- `file` — File selected in CTA Analysis tab (`.zip`/`.nii`/`.nii.gz`/`.dcm`)
+- `dicomFiles` — `File[]` | `null` from the dedicated DICOM tab upload; takes priority over `file` for the viewer
+- `riskLoading` / `simLoading` — loading states for Risk and Treatment Sim async calls
+
 **5-tab navigation:**
-1. `'dicom'` — DICOM View: Cornerstone.js multi-planar DICOM viewer
+1. `'dicom'` — DICOM View: dedicated upload (`accept=".dcm,.zip"`, `multiple`) + Cornerstone.js viewer; `dicomSource = dicomFiles ?? (file?.endsWith('.zip') ? file : null)`
 2. `'analysis'` — CTA Analysis: file upload, AI detection banner, morphology metrics, 3D viewer
 3. `'risk'` — Risk & Clinical: `ClinicalForm` + `ClinicalDecision` panel
 4. `'marta'` — MARTA Assessment: `MARTAForm` with EVT/NT risk output
@@ -169,7 +174,7 @@ React 19 + Vite app. No state management library — uses `useState` hooks in `A
 
 **Key components:**
 - `src/api.js` — all API calls via axios; uses `VITE_API_URL` env var (defaults to same-origin)
-- `src/components/DicomViewer.jsx` — Cornerstone.js DICOM viewer (`React.lazy()`), multi-planar (axial/coronal/sagittal), windowing presets
+- `src/components/DicomViewer.jsx` — Cornerstone.js DICOM viewer (`React.lazy()`), multi-planar (axial/coronal/sagittal), windowing presets, measurement tools (Length/Angle/ROI/Probe), DICOM metadata panel. Accepts `source` prop: `File` (ZIP), `File[]` (individual `.dcm` files), or `null`
 - `src/components/Viewer3D.jsx` — 3D mesh rendering with VTK.js (`@kitware/vtk.js`)
 - `src/components/ClinicalForm.jsx` — PHASES + UIATS input fields; pre-fills `aneurysm_size_mm` from `scanData.morphology.maximum_3d_diameter_mm`
 - `src/components/ClinicalDecision.jsx` — Doctor-in-the-loop: Accept / Modify / Override with reason; returns `null` when `synthesis` prop is null
