@@ -1,14 +1,17 @@
-# ── Render.com free tier: CPU-only, lightweight Python slim base ──────────────
-# This Dockerfile is used for Render deployment (render.yaml → dockerfilePath).
-# It does NOT include CUDA, nnU-Net, or RSNA pipeline deps (GPU required).
+# ── Render.com free tier: CPU-only, lightweight build ────────────────────────
+# Uses python:3.11-slim + build-essential so scikit-image/scipy C extensions compile.
+# Does NOT include CUDA, nnU-Net, or RSNA pipeline (GPU required for those).
 # The RSNA pipeline falls back gracefully when VESSEL_NNUNET_MODEL_DIR is unset.
 FROM python:3.11-slim AS base
 
 ENV DEBIAN_FRONTEND=noninteractive
 WORKDIR /app
 
-# Minimal system deps only
+# System deps:
+#   build-essential  — gcc/g++ for scikit-image, scipy C extensions
+#   curl             — Node.js installer
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
@@ -17,12 +20,10 @@ RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
     && apt-get install -y --no-install-recommends nodejs \
     && rm -rf /var/lib/apt/lists/*
 
-# ── Python dependencies (CPU-only, no torch/nnunet) ──────────────────────────
-COPY neuropredict_ai/requirements.txt .
-# Install only the lightweight deps; skip GPU/ML packages not available on CPU
+# ── Python dependencies (CPU-only subset) ────────────────────────────────────
 RUN pip install --no-cache-dir \
     fastapi \
-    uvicorn[standard] \
+    "uvicorn[standard]" \
     python-multipart \
     pydantic \
     numpy \
@@ -32,7 +33,8 @@ RUN pip install --no-cache-dir \
     trimesh \
     scipy \
     polars \
-    httpx
+    httpx \
+    aiofiles
 
 # ── Backend code ──────────────────────────────────────────────────────────────
 COPY neuropredict_ai/core/ core/
@@ -51,8 +53,8 @@ RUN rm -rf frontend/node_modules frontend/src frontend/package*.json \
 
 EXPOSE 8000
 
-# RSNA pipeline is disabled on Render (no GPU/weights). All other endpoints
-# (UIATS, MARTA, hemodynamics) work normally.
+# RSNA pipeline disabled on Render (no GPU/weights).
+# All other endpoints (UIATS, MARTA, hemodynamics, 3D mesh) work normally.
 ENV VESSEL_NNUNET_MODEL_DIR=""
 
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
