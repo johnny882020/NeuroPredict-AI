@@ -3,7 +3,6 @@ services:
     name: neuropredict-ai
     runtime: docker
     plan: free
-    dockerfilePath: Dockerfile.render
     healthCheckPath: /health
     envVars:
       - key: PORT

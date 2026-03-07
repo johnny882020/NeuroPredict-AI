@@ -51,13 +51,13 @@ npx vitest run src/App.test.jsx  # Run single test file
 ### Docker
 
 ```bash
-# GPU deployment (RunPod / Modal.com) — nvidia/cuda base
+# CPU-only deployment (Render free tier) — lightweight multi-stage build
 docker build -t neuropredict-ai .
-docker run --gpus all -v /local/model_weights:/weights -p 8000:8000 neuropredict-ai
+docker run -p 8000:8000 neuropredict-ai
 
-# CPU-only deployment (Render free tier)
-docker build -f Dockerfile.render -t neuropredict-ai-render .
-docker run -p 8000:8000 neuropredict-ai-render
+# GPU deployment (RunPod / Modal.com) — nvidia/cuda base
+docker build -f Dockerfile.gpu -t neuropredict-ai-gpu .
+docker run --gpus all -v /local/model_weights:/weights -p 8000:8000 neuropredict-ai-gpu
 ```
 
 ### Download RSNA Weights (requires Kaggle account)
@@ -142,8 +142,8 @@ Initialize with: `git submodule update --init --recursive`
 
 | Target | Dockerfile | Notes |
 |--------|-----------|-------|
-| Render (free) | `Dockerfile.render` | CPU-only, RSNA pipeline disabled |
-| RunPod / Modal | `Dockerfile` | CUDA 12.1, GPU required, mount weights at `/weights` |
+| Render (free) | `Dockerfile` | CPU-only, RSNA pipeline disabled |
+| RunPod / Modal | `Dockerfile.gpu` | CUDA 12.1, GPU required, mount weights at `/weights` |
 
 Health check: `GET /health` → `{"status": "healthy", "rsna_pipeline": "ready"|"weights_required"}`
 
