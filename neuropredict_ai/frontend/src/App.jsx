@@ -226,8 +226,8 @@ function App() {
         try {
             const result = await simulateTreatment(
                 type,
-                scanData.baseline_hemodynamics.mean_wss_pa,
-                scanData.baseline_hemodynamics.mean_osi,
+                scanData.baseline_hemodynamics?.mean_wss_pa ?? 4.5,
+                scanData.baseline_hemodynamics?.mean_osi ?? 0.1,
             );
             setSimulation(result);
         } catch (err) {
@@ -315,18 +315,8 @@ function App() {
                     ))}
                 </nav>
 
-                {/* Status badge */}
+                {/* Theme toggle */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-                    <Dot color={T.green} />
-                    <span style={{ fontSize: 11, color: T.textSec }}>
-                        {scanData?.pipeline === 'rsna_2025' ? 'RSNA 2025 Live' : 'Fallback Mode'}
-                    </span>
-                    <span style={{
-                        fontSize: 10, fontWeight: 700,
-                        padding: '2px 8px', borderRadius: 4,
-                        background: T.cyanDim, color: T.cyan,
-                        letterSpacing: '0.05em',
-                    }}>AUC 0.916</span>
                     <button onClick={() => setDarkMode(d => !d)} style={{
                         ...btnBase, padding: '4px 10px',
                         background: 'transparent',
@@ -671,6 +661,7 @@ function App() {
                                 setClinical={setClinical}
                                 onSubmit={handleRiskPrediction}
                                 scanData={scanData}
+                                disabled={!scanData}
                             />
                         </div>
 
@@ -1250,7 +1241,7 @@ function App() {
                 marginTop: 20,
             }}>
                 <span style={{ fontSize: 10, color: T.textMuted }}>
-                    © 2026 NeuroPredict AI · RSNA 2025 Pipeline · For research use only
+                    © 2026 NeuroPredict AI · For research use only
                 </span>
                 <span style={{ fontSize: 10, color: T.textMuted }}>
                     v2.1 · Not for clinical diagnosis

@@ -1,49 +1,5 @@
-import React from 'react';
-
-const SELECT_STYLE = {
-    padding: '7px 10px',
-    borderRadius: '6px',
-    border: '1px solid #cbd5e1',
-    background: '#ffffff',
-    color: '#1e293b',
-    width: '100%',
-    fontSize: '14px',
-    outline: 'none',
-};
-
-const INPUT_STYLE = {
-    ...SELECT_STYLE,
-    width: '80px',
-};
-
-const CHECKBOX_LABEL = {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-    padding: '5px 8px',
-    fontSize: '14px',
-    cursor: 'pointer',
-    borderRadius: '4px',
-    color: '#334155',
-};
-
-const SECTION_STYLE = {
-    marginBottom: '16px',
-    padding: '16px',
-    background: '#ffffff',
-    borderRadius: '10px',
-    border: '1px solid #e2e8f0',
-    boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
-};
-
-const SECTION_TITLE = {
-    margin: '0 0 12px 0',
-    fontSize: '15px',
-    fontWeight: '600',
-    color: '#1e40af',
-    borderBottom: '2px solid #dbeafe',
-    paddingBottom: '8px',
-};
+import React, { useContext } from 'react';
+import { ThemeCtx } from '../theme';
 
 const FIELD_ROW = {
     display: 'flex',
@@ -98,25 +54,38 @@ const EVT_APPROACHES = [
     { value: 'stent_assisted_coiling', label: 'Stent-Assisted Coiling' },
 ];
 
-const Checkbox = ({ checked, onChange, label }) => (
-    <label style={CHECKBOX_LABEL}>
-        <input type="checkbox" checked={checked} onChange={onChange} style={{ width: '16px', height: '16px', accentColor: '#2563eb' }} />
-        {label}
-    </label>
-);
+const Checkbox = ({ checked, onChange, label }) => {
+    const T = useContext(ThemeCtx);
+    return (
+        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '5px 8px', fontSize: '14px', cursor: 'pointer', borderRadius: '4px', color: T.textPri }}>
+            <input type="checkbox" checked={checked} onChange={onChange} style={{ width: '16px', height: '16px', accentColor: T.cyan }} />
+            {label}
+        </label>
+    );
+};
 
-const SelectField = ({ label, value, onChange, options }) => (
-    <div style={{ ...FIELD_ROW, flexWrap: 'wrap' }}>
-        <span style={{ minWidth: '100px', fontSize: '14px', color: '#475569', fontWeight: '500', flexShrink: 0 }}>{label}</span>
-        <select style={{ ...SELECT_STYLE, flex: '1 1 140px' }} value={value} onChange={onChange}>
-            {options.map(o => (
-                <option key={o.value} value={o.value}>{o.label}</option>
-            ))}
-        </select>
-    </div>
-);
+const SelectField = ({ label, value, onChange, options }) => {
+    const T = useContext(ThemeCtx);
+    const selectStyle = { padding: '7px 10px', borderRadius: '6px', border: `1px solid ${T.border}`, background: T.surface, color: T.textPri, fontSize: '14px', outline: 'none' };
+    return (
+        <div style={{ ...FIELD_ROW, flexWrap: 'wrap' }}>
+            <span style={{ minWidth: '100px', fontSize: '14px', color: T.textSec, fontWeight: '500', flexShrink: 0 }}>{label}</span>
+            <select style={{ ...selectStyle, flex: '1 1 140px' }} value={value} onChange={onChange}>
+                {options.map(o => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+            </select>
+        </div>
+    );
+};
 
 const MARTAForm = ({ martaData, setMartaData, onSubmit, loading }) => {
+    const T = useContext(ThemeCtx);
+    const selectStyle = { padding: '7px 10px', borderRadius: '6px', border: `1px solid ${T.border}`, background: T.surface, color: T.textPri, width: '100%', fontSize: '14px', outline: 'none' };
+    const inputStyle = { ...selectStyle, width: '80px' };
+    const sectionStyle = { marginBottom: '16px', padding: '16px', background: T.panel, borderRadius: '10px', border: `1px solid ${T.border}` };
+    const sectionTitle = { margin: '0 0 12px 0', fontSize: '15px', fontWeight: '600', color: T.cyan, borderBottom: `2px solid ${T.border}`, paddingBottom: '8px' };
+
     const { patient, aneurysm } = martaData;
 
     const updatePatient = (field, value) => {
@@ -136,14 +105,14 @@ const MARTAForm = ({ martaData, setMartaData, onSubmit, loading }) => {
     return (
         <div style={{ maxWidth: '520px', width: '100%' }}>
             {/* Patient / Baseline */}
-            <div style={SECTION_STYLE}>
-                <h4 style={SECTION_TITLE}>Patient / Baseline</h4>
+            <div style={sectionStyle}>
+                <h4 style={sectionTitle}>Patient / Baseline</h4>
 
                 <div style={FIELD_ROW}>
-                    <span style={{ fontSize: '14px', color: '#475569', fontWeight: '500' }}>Age</span>
+                    <span style={{ fontSize: '14px', color: T.textSec, fontWeight: '500' }}>Age</span>
                     <input
                         type="number"
-                        style={INPUT_STYLE}
+                        style={inputStyle}
                         value={patient.age}
                         min={0}
                         max={120}
@@ -152,9 +121,9 @@ const MARTAForm = ({ martaData, setMartaData, onSubmit, loading }) => {
                 </div>
 
                 <div style={FIELD_ROW}>
-                    <span style={{ fontSize: '14px', color: '#475569', fontWeight: '500' }}>Sex</span>
+                    <span style={{ fontSize: '14px', color: T.textSec, fontWeight: '500' }}>Sex</span>
                     <select
-                        style={{ ...SELECT_STYLE, width: '100px' }}
+                        style={{ ...selectStyle, width: '100px' }}
                         value={patient.sex}
                         onChange={e => updatePatient('sex', e.target.value)}
                     >
@@ -172,9 +141,9 @@ const MARTAForm = ({ martaData, setMartaData, onSubmit, loading }) => {
                 </div>
 
                 <div style={{ ...FIELD_ROW, marginTop: '8px' }}>
-                    <span style={{ fontSize: '14px', color: '#475569', fontWeight: '500' }}>Baseline mRS (0-5)</span>
+                    <span style={{ fontSize: '14px', color: T.textSec, fontWeight: '500' }}>Baseline mRS (0-5)</span>
                     <select
-                        style={{ ...SELECT_STYLE, width: '80px' }}
+                        style={{ ...selectStyle, width: '80px' }}
                         value={patient.baseline_mrs}
                         onChange={e => updatePatient('baseline_mrs', parseInt(e.target.value))}
                     >
@@ -186,8 +155,8 @@ const MARTAForm = ({ martaData, setMartaData, onSubmit, loading }) => {
             </div>
 
             {/* Aneurysm Anatomy */}
-            <div style={SECTION_STYLE}>
-                <h4 style={{ ...SECTION_TITLE, color: '#7c3aed', borderBottomColor: '#ede9fe' }}>Aneurysm Anatomy</h4>
+            <div style={sectionStyle}>
+                <h4 style={{ ...sectionTitle, color: T.purple }}>Aneurysm Anatomy</h4>
 
                 <SelectField label="Location" value={aneurysm.location} onChange={e => updateAneurysm('location', e.target.value)} options={LOCATIONS} />
                 <SelectField label="Size" value={aneurysm.size} onChange={e => updateAneurysm('size', e.target.value)} options={SIZES} />
@@ -206,8 +175,8 @@ const MARTAForm = ({ martaData, setMartaData, onSubmit, loading }) => {
             </div>
 
             {/* Treatment Planning */}
-            <div style={SECTION_STYLE}>
-                <h4 style={{ ...SECTION_TITLE, color: '#059669', borderBottomColor: '#d1fae5' }}>Treatment Planning (EVT)</h4>
+            <div style={sectionStyle}>
+                <h4 style={{ ...sectionTitle, color: T.green }}>Treatment Planning (EVT)</h4>
                 <SelectField label="EVT Approach" value={aneurysm.evt_approach} onChange={e => updateAneurysm('evt_approach', e.target.value)} options={EVT_APPROACHES} />
             </div>
 
@@ -221,11 +190,11 @@ const MARTAForm = ({ martaData, setMartaData, onSubmit, loading }) => {
                     fontWeight: '600',
                     borderRadius: '8px',
                     border: 'none',
-                    background: loading ? '#94a3b8' : '#2563eb',
-                    color: '#ffffff',
+                    background: loading ? T.surface : `linear-gradient(135deg, ${T.cyan}, #3b82f6)`,
+                    color: loading ? T.textSec : '#ffffff',
                     cursor: loading ? 'not-allowed' : 'pointer',
                     marginTop: '4px',
-                    boxShadow: loading ? 'none' : '0 2px 8px rgba(37,99,235,0.3)',
+                    opacity: loading ? 0.6 : 1,
                     transition: 'all 0.2s ease',
                 }}
             >

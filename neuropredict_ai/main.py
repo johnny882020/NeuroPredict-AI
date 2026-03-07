@@ -181,51 +181,60 @@ async def predict_risk(
     probability. Pass marta_evt_pct / marta_nt_pct from /marta_assessment to
     include procedural risk in the synthesis recommendation.
     """
-    clinical_dict = clinical.model_dump()
-    morph_dict = morph.model_dump()
+    try:
+        clinical_dict = clinical.model_dump()
+        morph_dict = morph.model_dump()
 
-    phases_result = calculate_phases_score(clinical_dict)
-    uiats_result = calculate_uiats_score(clinical_dict, morph_dict)
+        phases_result = calculate_phases_score(clinical_dict)
+        uiats_result = calculate_uiats_score(clinical_dict, morph_dict)
 
-    ai_prob = (
-        rsna_probability
-        if rsna_probability is not None
-        else heuristic_rupture_probability(clinical_dict, morph_dict)
-    )
+        ai_prob = (
+            rsna_probability
+            if rsna_probability is not None
+            else heuristic_rupture_probability(clinical_dict, morph_dict)
+        )
 
-    synthesis = synthesize_recommendation(
-        phases=phases_result,
-        uiats=uiats_result,
-        marta_evt_pct=marta_evt_pct,
-        marta_nt_pct=marta_nt_pct,
-        rsna_probability=rsna_probability,
-    )
+        synthesis = synthesize_recommendation(
+            phases=phases_result,
+            uiats=uiats_result,
+            marta_evt_pct=marta_evt_pct,
+            marta_nt_pct=marta_nt_pct,
+            rsna_probability=rsna_probability,
+        )
 
-    return {
-        "phases": phases_result,
-        "uiats": uiats_result,
-        "synthesis": synthesis,
-        "ai_rupture_probability": ai_prob,
-        "probability_source": "rsna_2025" if rsna_probability is not None else "heuristic",
-    }
+        return {
+            "phases": phases_result,
+            "uiats": uiats_result,
+            "synthesis": synthesis,
+            "ai_rupture_probability": ai_prob,
+            "probability_source": "rsna_2025" if rsna_probability is not None else "heuristic",
+        }
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Risk prediction error: {exc}") from exc
 
 
 @app.post("/marta_assessment")
 async def marta_assessment(data: MARTAInput):
     """MARTA Score: EVT and NT complication probabilities."""
-    result = marta_calc.assess(data)
-    return result.model_dump()
+    try:
+        result = marta_calc.assess(data)
+        return result.model_dump()
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"MARTA assessment error: {exc}") from exc
 
 
 @app.post("/simulate_treatment")
 async def simulate_treatment(treatment_type: str, baseline_wss_pa: float, baseline_osi: float):
     """Flow visualization estimate after device placement (computational proxy, not validated CFD)."""
-    baseline_stats = {
-        "mean_wss_pa": baseline_wss_pa,
-        "max_wss_pa": baseline_wss_pa * 2.5,
-        "mean_osi": baseline_osi,
-    }
-    return hemodynamics_sim.simulate_treatment(treatment_type, baseline_stats)
+    try:
+        baseline_stats = {
+            "mean_wss_pa": baseline_wss_pa,
+            "max_wss_pa": baseline_wss_pa * 2.5,
+            "mean_osi": baseline_osi,
+        }
+        return hemodynamics_sim.simulate_treatment(treatment_type, baseline_stats)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Treatment simulation error: {exc}") from exc
 
 
 # Serve frontend static files (must be after API routes)

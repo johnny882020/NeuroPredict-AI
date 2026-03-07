@@ -2,6 +2,17 @@ import axios from 'axios';
 
 const API_BASE = import.meta.env.VITE_API_URL || '';
 
+// Surface a user-friendly message when Render free tier is waking up
+axios.interceptors.response.use(
+    res => res,
+    err => {
+        if (err.response?.status === 503) {
+            err.message = 'Server is starting up — please wait 30 seconds and try again.';
+        }
+        return Promise.reject(err);
+    }
+);
+
 export const uploadScan = async (file) => {
     const formData = new FormData();
     formData.append('file', file);

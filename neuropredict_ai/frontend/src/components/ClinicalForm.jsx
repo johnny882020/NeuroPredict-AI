@@ -1,43 +1,10 @@
-import { useEffect } from 'react';
-
-const T = {
-    surface: '#0e1420', panel: '#141b2d', border: '#1e2d48',
-    textPri: '#e8edf5', textSec: '#5d7a9e', textMuted: '#3a5070',
-    cyan: '#06b6d4', cyanDim: '#0c4a5a',
-};
-
-const inputStyle = {
-    background: T.surface, color: T.textPri, border: `1px solid ${T.border}`,
-    borderRadius: 6, padding: '6px 10px', fontSize: 13, width: '80px',
-    outline: 'none',
-};
-
-const selectStyle = {
-    background: T.surface, color: T.textPri, border: `1px solid ${T.border}`,
-    borderRadius: 6, padding: '6px 10px', fontSize: 13, width: '100%',
-    outline: 'none', cursor: 'pointer',
-};
-
-const labelStyle = {
-    fontSize: 10, fontWeight: 700, letterSpacing: '0.08em',
-    textTransform: 'uppercase', color: T.textSec,
-    display: 'block', marginBottom: 5,
-};
-
-const sectionLabelStyle = {
-    fontSize: 10, fontWeight: 700, letterSpacing: '0.1em',
-    textTransform: 'uppercase', color: T.cyan,
-    marginBottom: 10, marginTop: 16, display: 'block',
-};
-
-const checkRow = {
-    display: 'flex', alignItems: 'center', gap: 8,
-    padding: '5px 0', fontSize: 13, color: T.textPri, cursor: 'pointer',
-};
+import { useEffect, useContext } from 'react';
+import { ThemeCtx } from '../theme';
 
 function CheckField({ label, checked, onChange, sublabel }) {
+    const T = useContext(ThemeCtx);
     return (
-        <label style={checkRow}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0', fontSize: 13, color: T.textPri, cursor: 'pointer' }}>
             <input
                 type="checkbox" checked={checked} onChange={e => onChange(e.target.checked)}
                 style={{ width: 15, height: 15, accentColor: T.cyan, cursor: 'pointer' }}
@@ -62,9 +29,32 @@ function CheckField({ label, checked, onChange, sublabel }) {
  *   setClinical — state setter
  *   onSubmit    — callback to trigger risk calculation
  *   scanData    — optional scan result to pre-fill aneurysm size
+ *   disabled    — disable the submit button (e.g. when no scan loaded)
  */
-const ClinicalForm = ({ clinical, setClinical, onSubmit, scanData }) => {
+const ClinicalForm = ({ clinical, setClinical, onSubmit, scanData, disabled }) => {
+    const T = useContext(ThemeCtx);
     const set = (key, val) => setClinical(prev => ({ ...prev, [key]: val }));
+
+    const inputStyle = {
+        background: T.surface, color: T.textPri, border: `1px solid ${T.border}`,
+        borderRadius: 6, padding: '6px 10px', fontSize: 13, width: '80px',
+        outline: 'none',
+    };
+    const selectStyle = {
+        background: T.surface, color: T.textPri, border: `1px solid ${T.border}`,
+        borderRadius: 6, padding: '6px 10px', fontSize: 13, width: '100%',
+        outline: 'none', cursor: 'pointer',
+    };
+    const labelStyle = {
+        fontSize: 10, fontWeight: 700, letterSpacing: '0.08em',
+        textTransform: 'uppercase', color: T.textSec,
+        display: 'block', marginBottom: 5,
+    };
+    const sectionLabelStyle = {
+        fontSize: 10, fontWeight: 700, letterSpacing: '0.1em',
+        textTransform: 'uppercase', color: T.cyan,
+        marginBottom: 10, marginTop: 16, display: 'block',
+    };
 
     // Pre-fill aneurysm size from scan morphology when scan data arrives
     useEffect(() => {
@@ -164,14 +154,15 @@ const ClinicalForm = ({ clinical, setClinical, onSubmit, scanData }) => {
             />
 
             {/* ── Submit ──────────────────────────────────────────────────── */}
-            <button onClick={onSubmit} style={{
+            <button onClick={onSubmit} disabled={disabled} style={{
                 marginTop: 18, width: '100%',
-                background: `linear-gradient(135deg, ${T.cyan}, #3b82f6)`,
-                color: '#fff', border: 'none', borderRadius: 6,
-                fontWeight: 700, fontSize: 13, padding: '10px 0',
-                cursor: 'pointer', letterSpacing: '0.04em',
+                background: disabled ? T.surface : `linear-gradient(135deg, ${T.cyan}, #3b82f6)`,
+                color: disabled ? T.textSec : '#fff', border: `1px solid ${disabled ? T.border : 'transparent'}`,
+                borderRadius: 6, fontWeight: 700, fontSize: 13, padding: '10px 0',
+                cursor: disabled ? 'not-allowed' : 'pointer', letterSpacing: '0.04em',
+                opacity: disabled ? 0.5 : 1,
             }}>
-                Calculate Risk Scores
+                {disabled ? 'Upload a scan to enable' : 'Calculate Risk Scores'}
             </button>
         </div>
     );

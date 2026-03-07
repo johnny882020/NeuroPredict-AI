@@ -34,8 +34,8 @@ describe('App', () => {
         render(<App />);
         fireEvent.click(screen.getByText('Risk & Clinical'));
         expect(screen.getByText(/Patient History/i)).toBeInTheDocument();
-        // Use getByRole to target only the button, not the hint text
-        expect(screen.getByRole('button', { name: /Calculate Risk Scores/i })).toBeInTheDocument();
+        // Without a scan, the button shows disabled state
+        expect(screen.getByRole('button', { name: /Upload a scan to enable/i })).toBeInTheDocument();
     });
 
     it('shows MARTA form when MARTA Assessment tab is clicked', () => {
