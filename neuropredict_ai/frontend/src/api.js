@@ -11,11 +11,21 @@ export const uploadScan = async (file) => {
     return response.data;
 };
 
-export const predictRisk = async (clinicalData, morphData, rsnaProbability = null) => {
-    const params = rsnaProbability !== null ? `?rsna_probability=${rsnaProbability}` : '';
-    const response = await axios.post(`${API_BASE}/predict_risk${params}`, {
+export const predictRisk = async (
+    clinicalData,
+    morphData,
+    rsnaProbability = null,
+    martaEvtPct = null,
+    martaNtPct = null,
+) => {
+    const params = new URLSearchParams();
+    if (rsnaProbability !== null) params.append('rsna_probability', rsnaProbability);
+    if (martaEvtPct !== null)     params.append('marta_evt_pct', martaEvtPct);
+    if (martaNtPct !== null)      params.append('marta_nt_pct', martaNtPct);
+    const qs = params.toString() ? `?${params}` : '';
+    const response = await axios.post(`${API_BASE}/predict_risk${qs}`, {
         clinical: clinicalData,
-        morph: morphData
+        morph: morphData,
     });
     return response.data;
 };

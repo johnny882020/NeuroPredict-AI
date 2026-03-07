@@ -1,8 +1,10 @@
-import React, { useState, Suspense, lazy } from 'react';
+import { useState, Suspense, lazy } from 'react';
 import { uploadScan, predictRisk, simulateTreatment, assessMARTA } from './api';
 const Viewer3D = lazy(() => import('./components/Viewer3D'));
+const DicomViewer = lazy(() => import('./components/DicomViewer'));
 import ClinicalForm from './components/ClinicalForm';
 import MARTAForm from './components/MARTAForm';
+import ClinicalDecision from './components/ClinicalDecision';
 
 // ── Design tokens (dark medical workstation) ──────────────────────────────────
 const T = {
@@ -157,8 +159,19 @@ function App() {
     const [error, setError] = useState(null);
     const [activeTab, setActiveTab] = useState('analysis');
 
+    const [doctorDecision, setDoctorDecision] = useState(null);
+
     const [clinical, setClinical] = useState({
-        age: 50, smoking: false, hypertension: false, previous_sah: false, familial_sah: false,
+        age: 50, smoking: false, hypertension: false,
+        previous_sah: false, familial_sah: false,
+        // PHASES
+        population: 'other',
+        earlier_sah_different_aneurysm: false,
+        aneurysm_site: 'MCA',
+        aneurysm_size_mm: 7.0,
+        // UIATS
+        multiple_aneurysms: false,
+        high_risk_location: false,
     });
 
     const [martaData, setMartaData] = useState({
@@ -194,12 +207,28 @@ function App() {
     const handleRiskPrediction = async () => {
         if (!scanData) return;
         setError(null);
+        setDoctorDecision(null);
         try {
-            const result = await predictRisk(clinical, scanData.morphology, scanData.aneurysm_probability);
+            const result = await predictRisk(
+                clinical,
+                scanData.morphology || { maximum_3d_diameter_mm: clinical.aneurysm_size_mm, aspect_ratio_AR: 1.0, size_ratio_SR: 1.0, is_irregular: false },
+                scanData.aneurysm_probability,
+                martaResult?.details?.evt_probability_pct ?? null,
+                martaResult?.details?.nt_probability_pct ?? null,
+            );
             setRiskData(result);
         } catch (err) {
             setError('Risk prediction failed: ' + (err.response?.data?.detail || err.message));
         }
+    };
+
+    const handleDoctorDecision = (type, reason) => {
+        if (type === null) { setDoctorDecision(null); return; }
+        setDoctorDecision({
+            type,
+            reason,
+            timestamp: new Date().toLocaleString(),
+        });
     };
 
     const handleMARTA = async () => {
@@ -236,6 +265,7 @@ function App() {
     const flowRisky = hemo?.flow_status?.toLowerCase().includes('risk');
 
     const tabs = [
+        { id: 'dicom',    label: 'DICOM View' },
         { id: 'analysis', label: 'CTA Analysis' },
         { id: 'risk',     label: 'Risk & Clinical' },
         { id: 'marta',    label: 'MARTA Assessment' },
@@ -345,6 +375,31 @@ function App() {
 
             {/* ── Main Content ──────────────────────────────────────────────── */}
             <div style={{ padding: 20, maxWidth: 1600, margin: '0 auto' }}>
+
+                {/* ── TAB: DICOM View ────────────────────────────────────── */}
+                {activeTab === 'dicom' && (
+                    <div>
+                        <div style={{ ...panelStyle, padding: 16, marginBottom: 16 }}>
+                            <SectionHeader icon="⬜" title="DICOM Viewer" badge="MPR" />
+                            <p style={{ fontSize: 11, color: T.textSec, margin: '0 0 8px 0' }}>
+                                Multi-planar reconstruction from uploaded DICOM ZIP.
+                                Window/Level · Zoom · Pan · Scroll controls active.
+                            </p>
+                            {!file && (
+                                <div style={{ fontSize: 12, color: T.textMuted, padding: '8px 0' }}>
+                                    Upload a DICOM ZIP in the CTA Analysis tab to view slices here.
+                                </div>
+                            )}
+                        </div>
+                        <Suspense fallback={
+                            <div style={{ ...panelStyle, padding: 40, textAlign: 'center', color: T.textMuted }}>
+                                Loading DICOM viewer…
+                            </div>
+                        }>
+                            <DicomViewer file={file?.name?.toLowerCase().endsWith('.zip') ? file : null} />
+                        </Suspense>
+                    </div>
+                )}
 
                 {/* ── TAB: CTA Analysis ──────────────────────────────────── */}
                 {activeTab === 'analysis' && (
@@ -590,76 +645,123 @@ function App() {
 
                 {/* ── TAB: Risk & Clinical ──────────────────────────────────── */}
                 {activeTab === 'risk' && (
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, alignItems: 'start' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '340px 1fr', gap: 16, alignItems: 'start' }}>
+                        {/* LEFT — form */}
                         <div style={{ ...panelStyle, padding: 20 }}>
                             <SectionHeader icon="♥" title="Clinical Risk Prediction" />
-                            {scanData ? (
-                                <ClinicalForm
-                                    clinical={clinical}
-                                    setClinical={setClinical}
-                                    onSubmit={handleRiskPrediction}
-                                />
-                            ) : (
-                                <div style={{
-                                    padding: 24, textAlign: 'center',
-                                    background: T.surface, borderRadius: 6,
-                                    border: `1px dashed ${T.border}`,
-                                }}>
-                                    <div style={{ color: T.textMuted, fontSize: 13 }}>
-                                        Analyze a CTA scan first to enable risk prediction
-                                    </div>
-                                </div>
-                            )}
+                            <ClinicalForm
+                                clinical={clinical}
+                                setClinical={setClinical}
+                                onSubmit={handleRiskPrediction}
+                                scanData={scanData}
+                            />
                         </div>
 
+                        {/* RIGHT — results */}
                         <div>
-                            {riskData && (
-                                <div style={{ ...panelStyle, padding: 20 }}>
-                                    <SectionHeader icon="◉" title="Risk Assessment Results" />
+                            {riskData && (() => {
+                                const ph = riskData.phases;
+                                const ui = riskData.uiats;
+                                const tierColor = { Low: T.green, Moderate: T.orange, High: T.red, 'Very High': T.red }[ph.risk_tier] || T.textSec;
+                                const tierDim   = { Low: T.greenDim, Moderate: T.orangeDim, High: T.redDim, 'Very High': T.redDim }[ph.risk_tier] || T.surface;
+                                return (
+                                    <>
+                                        {/* PHASES card */}
+                                        <div style={{ ...panelStyle, padding: 20, borderColor: tierColor + '55', marginBottom: 12 }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
+                                                <SectionHeader icon="◎" title="PHASES Score" badge="Evidence A" />
+                                            </div>
+                                            <div style={{ display: 'flex', alignItems: 'flex-end', gap: 16, marginBottom: 12 }}>
+                                                <div>
+                                                    <div style={{ fontSize: 48, fontWeight: 900, lineHeight: 1, color: tierColor }}>
+                                                        {ph.five_year_rupture_risk_pct}
+                                                        <span style={{ fontSize: 20, fontWeight: 600 }}>%</span>
+                                                    </div>
+                                                    <div style={{ fontSize: 11, color: T.textSec, marginTop: 2 }}>5-year rupture risk</div>
+                                                </div>
+                                                <div>
+                                                    <div style={{
+                                                        display: 'inline-block', padding: '4px 14px',
+                                                        background: tierDim, borderRadius: 6,
+                                                        border: `1px solid ${tierColor}44`,
+                                                        fontSize: 13, fontWeight: 800, color: tierColor,
+                                                        marginBottom: 4,
+                                                    }}>{ph.risk_tier}</div>
+                                                    <div style={{ fontSize: 11, color: T.textMuted }}>Score: {ph.phases_score} / 12+</div>
+                                                </div>
+                                            </div>
+                                            <div style={{ fontSize: 11, color: T.textMuted }}>
+                                                {ph.citation}
+                                            </div>
+                                        </div>
 
-                                    <div style={{
-                                        padding: '16px 20px',
-                                        background: T.surface,
-                                        borderRadius: 8,
-                                        border: `1px solid ${T.border}`,
-                                        marginBottom: 12,
-                                    }}>
-                                        <div style={{ ...labelStyle }}>UIATS Score</div>
-                                        <div style={{ fontSize: 36, fontWeight: 900, color: T.cyan }}>
-                                            {riskData.uiats_assessment.uiats_score}
+                                        {/* UIATS two-column card */}
+                                        <div style={{ ...panelStyle, padding: 20, marginBottom: 12 }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
+                                                <SectionHeader icon="⊕" title="UIATS Score" badge="Evidence B" />
+                                            </div>
+                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 12 }}>
+                                                <div style={{ background: T.greenDim, borderRadius: 6, padding: '10px 14px', border: `1px solid ${T.green}33` }}>
+                                                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: T.green, marginBottom: 4 }}>Treat pts</div>
+                                                    <div style={{ fontSize: 30, fontWeight: 900, color: T.green }}>{ui.treatment_score}</div>
+                                                </div>
+                                                <div style={{ background: T.blueDim, borderRadius: 6, padding: '10px 14px', border: `1px solid ${T.blue}33` }}>
+                                                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: T.blue, marginBottom: 4 }}>Consv pts</div>
+                                                    <div style={{ fontSize: 30, fontWeight: 900, color: T.blue }}>{ui.conservative_score}</div>
+                                                </div>
+                                                <div style={{ background: T.surface, borderRadius: 6, padding: '10px 14px', border: `1px solid ${T.border}` }}>
+                                                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: T.textSec, marginBottom: 4 }}>Net</div>
+                                                    <div style={{ fontSize: 30, fontWeight: 900, color: ui.net_score >= 2 ? T.orange : ui.net_score >= 0 ? T.cyan : T.green }}>
+                                                        {ui.net_score >= 0 ? '+' : ''}{ui.net_score}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div style={{ fontSize: 13, color: T.textSec, marginBottom: 4 }}>{ui.recommendation}</div>
+                                            <div style={{ fontSize: 11, color: T.textMuted }}>{ui.citation}</div>
                                         </div>
-                                        <div style={{ fontSize: 13, color: T.textSec, marginTop: 4 }}>
-                                            {riskData.uiats_assessment.uiats_recommendation}
-                                        </div>
-                                    </div>
 
-                                    <div style={{
-                                        padding: '16px 20px',
-                                        background: T.redDim,
-                                        borderRadius: 8,
-                                        border: `1px solid ${T.red}44`,
-                                    }}>
-                                        <div style={{ ...labelStyle }}>AI Rupture Probability</div>
-                                        <div style={{ fontSize: 36, fontWeight: 900, color: T.red }}>
-                                            {(riskData.ai_rupture_probability * 100).toFixed(2)}%
+                                        {/* AI probability */}
+                                        <div style={{ ...panelStyle, padding: '12px 20px', marginBottom: 12 }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                                                <div>
+                                                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: T.textSec, marginBottom: 2 }}>AI Rupture Probability</div>
+                                                    <div style={{ fontSize: 28, fontWeight: 900, color: T.red }}>
+                                                        {(riskData.ai_rupture_probability * 100).toFixed(1)}%
+                                                    </div>
+                                                </div>
+                                                <div style={{ marginLeft: 'auto', textAlign: 'right' }}>
+                                                    <span style={{
+                                                        padding: '3px 10px', borderRadius: 4, fontSize: 10, fontWeight: 700,
+                                                        background: riskData.probability_source === 'rsna_2025' ? T.cyanDim : T.surface,
+                                                        color: riskData.probability_source === 'rsna_2025' ? T.cyan : T.textMuted,
+                                                        border: `1px solid ${riskData.probability_source === 'rsna_2025' ? T.cyan + '44' : T.border}`,
+                                                    }}>
+                                                        {riskData.probability_source === 'rsna_2025' ? 'RSNA 2025 · AUC 0.916' : 'Heuristic estimate'}
+                                                    </span>
+                                                </div>
+                                            </div>
                                         </div>
-                                        <div style={{ fontSize: 11, color: T.textSec, marginTop: 4 }}>
-                                            Source: {riskData.probability_source || 'heuristic'}
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
 
-                            {!riskData && scanData && (
+                                        {/* Clinical Decision */}
+                                        <ClinicalDecision
+                                            synthesis={riskData.synthesis}
+                                            decision={doctorDecision}
+                                            onDecision={handleDoctorDecision}
+                                        />
+                                    </>
+                                );
+                            })()}
+
+                            {!riskData && (
                                 <div style={{
-                                    ...panelStyle, padding: 24,
-                                    textAlign: 'center', minHeight: 200,
+                                    ...panelStyle, padding: 40,
+                                    textAlign: 'center', minHeight: 300,
                                     display: 'flex', flexDirection: 'column',
                                     alignItems: 'center', justifyContent: 'center',
                                 }}>
-                                    <div style={{ fontSize: 32, opacity: 0.2, marginBottom: 10 }}>◉</div>
+                                    <div style={{ fontSize: 36, opacity: 0.15, marginBottom: 12 }}>◎</div>
                                     <div style={{ color: T.textMuted, fontSize: 13 }}>
-                                        Complete the clinical form to see risk results
+                                        Complete the clinical form and click Calculate Risk Scores
                                     </div>
                                 </div>
                             )}
@@ -808,11 +910,17 @@ function App() {
                 {activeTab === 'treatment' && (
                     <div style={{ display: 'grid', gridTemplateColumns: '300px 1fr', gap: 16, alignItems: 'start' }}>
                         <div style={{ ...panelStyle, padding: 20 }}>
-                            <SectionHeader icon="⚙" title="Treatment Simulation" />
+                            <SectionHeader icon="⚙" title="Flow Visualization Estimate" />
                             {scanData ? (
                                 <>
-                                    <p style={{ fontSize: 12, color: T.textSec, margin: '0 0 16px 0' }}>
-                                        Simulate post-treatment hemodynamic changes using baseline CFD values.
+                                    <p style={{ fontSize: 12, color: T.textSec, margin: '0 0 8px 0' }}>
+                                        Computational flow proxy after device placement.
+                                    </p>
+                                    <p style={{ fontSize: 11, color: T.textMuted, margin: '0 0 16px 0',
+                                        padding: '6px 8px', background: T.surface, borderRadius: 4,
+                                        border: `1px solid ${T.border}`,
+                                    }}>
+                                        ⚠ WSS values are distance-based proxies, not validated CFD.
                                     </p>
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                                         <button
@@ -863,7 +971,7 @@ function App() {
                         {simulation && (
                             <div>
                                 <div style={{ ...panelStyle, padding: 20 }}>
-                                    <SectionHeader icon="◉" title="Post-Treatment Hemodynamics" />
+                                    <SectionHeader icon="◉" title="Post-Treatment Flow Estimate" />
 
                                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 16 }}>
                                         <MetricPill label="Post WSS Mean" value={simulation.mean_wss_pa} unit="Pa" accent={T.cyan} />

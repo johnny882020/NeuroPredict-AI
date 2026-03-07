@@ -1,7 +1,7 @@
 import shutil
 import tempfile
 from pathlib import Path
-from typing import Optional
+from typing import Literal, Optional
 
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
@@ -14,7 +14,12 @@ import numpy as np
 from core.data_loader import process_scan, write_nifti_for_pipeline
 from core.segmentation import segmentation_model
 from core.extract_features import extract_morphology
-from core.risk_model import uiats_calc, ml_predictor
+from core.risk_model import (
+    calculate_phases_score,
+    calculate_uiats_score,
+    heuristic_rupture_probability,
+    synthesize_recommendation,
+)
 from core.hemodynamics import hemodynamics_sim
 from core.marta_score import (
     marta_calc,
@@ -43,11 +48,20 @@ app.add_middleware(
 
 
 class ClinicalData(BaseModel):
+    # Core patient factors
     age: int
     smoking: bool
     hypertension: bool
     previous_sah: bool
     familial_sah: bool
+    # PHASES score variables (with defaults for backward compatibility)
+    population: Literal["finnish_japanese", "other"] = "other"
+    earlier_sah_different_aneurysm: bool = False
+    aneurysm_site: Literal["ICA", "MCA", "ACA_AComm_PCoA_posterior"] = "MCA"
+    aneurysm_size_mm: float = 7.0
+    # Additional UIATS variables
+    multiple_aneurysms: bool = False
+    high_risk_location: bool = False
 
 
 class MorphologyData(BaseModel):
@@ -149,22 +163,43 @@ async def predict_risk(
     clinical: ClinicalData,
     morph: MorphologyData,
     rsna_probability: Optional[float] = None,
+    marta_evt_pct: Optional[float] = None,
+    marta_nt_pct: Optional[float] = None,
 ):
     """
-    UIATS score + AI rupture probability.
+    Multi-score clinical risk assessment combining:
+    - PHASES score (5-year absolute rupture risk, Evidence A)
+    - UIATS two-column treatment decision score (Evidence B)
+    - Recommendation synthesis integrating MARTA procedural risk + AI probability
 
-    Pass rsna_probability from /analyze_and_mesh to use the real RSNA AUC 0.916
-    probability instead of the heuristic estimate.
+    Pass rsna_probability from /analyze_and_mesh to use the RSNA AUC 0.916
+    probability. Pass marta_evt_pct / marta_nt_pct from /marta_assessment to
+    include procedural risk in the synthesis recommendation.
     """
-    uiats_result = uiats_calc.calculate_score(clinical.dict(), morph.dict())
+    clinical_dict = clinical.model_dump()
+    morph_dict = morph.model_dump()
+
+    phases_result = calculate_phases_score(clinical_dict)
+    uiats_result = calculate_uiats_score(clinical_dict, morph_dict)
+
     ai_prob = (
         rsna_probability
         if rsna_probability is not None
-        else ml_predictor.predict_risk(clinical.dict(), morph.dict())
+        else heuristic_rupture_probability(clinical_dict, morph_dict)
+    )
+
+    synthesis = synthesize_recommendation(
+        phases=phases_result,
+        uiats=uiats_result,
+        marta_evt_pct=marta_evt_pct,
+        marta_nt_pct=marta_nt_pct,
+        rsna_probability=rsna_probability,
     )
 
     return {
-        "uiats_assessment": uiats_result,
+        "phases": phases_result,
+        "uiats": uiats_result,
+        "synthesis": synthesis,
         "ai_rupture_probability": ai_prob,
         "probability_source": "rsna_2025" if rsna_probability is not None else "heuristic",
     }
@@ -179,7 +214,7 @@ async def marta_assessment(data: MARTAInput):
 
 @app.post("/simulate_treatment")
 async def simulate_treatment(treatment_type: str, baseline_wss_pa: float, baseline_osi: float):
-    """Phase 3: Simulates device placement outcomes."""
+    """Flow visualization estimate after device placement (computational proxy, not validated CFD)."""
     baseline_stats = {
         "mean_wss_pa": baseline_wss_pa,
         "max_wss_pa": baseline_wss_pa * 2.5,
