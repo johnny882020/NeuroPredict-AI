@@ -54,7 +54,7 @@ describe('App', () => {
     it('shows DICOM placeholder text when DICOM View tab is clicked without a file', () => {
         render(<App />);
         fireEvent.click(screen.getByText('DICOM View'));
-        // Without a file, the DicomViewer shows a placeholder
-        expect(screen.getByText(/Upload a DICOM ZIP/i)).toBeInTheDocument();
+        // Without a file, the DICOM tab shows a no-file message and the upload input
+        expect(screen.getByText(/No file loaded/i)).toBeInTheDocument();
     });
 });

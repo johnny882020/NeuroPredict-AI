@@ -150,11 +150,14 @@ const ProbBar = ({ label, prob, maxProb }) => {
 // ── Main App ──────────────────────────────────────────────────────────────────
 function App() {
     const [file, setFile] = useState(null);
+    const [dicomFiles, setDicomFiles] = useState(null);
     const [scanData, setScanData] = useState(null);
     const [riskData, setRiskData] = useState(null);
     const [martaResult, setMartaResult] = useState(null);
     const [simulation, setSimulation] = useState(null);
     const [loading, setLoading] = useState(false);
+    const [riskLoading, setRiskLoading] = useState(false);
+    const [simLoading, setSimLoading] = useState(false);
     const [martaLoading, setMartaLoading] = useState(false);
     const [error, setError] = useState(null);
     const [activeTab, setActiveTab] = useState('analysis');
@@ -208,6 +211,7 @@ function App() {
         if (!scanData) return;
         setError(null);
         setDoctorDecision(null);
+        setRiskLoading(true);
         try {
             const result = await predictRisk(
                 clinical,
@@ -220,6 +224,7 @@ function App() {
         } catch (err) {
             setError('Risk prediction failed: ' + (err.response?.data?.detail || err.message));
         }
+        setRiskLoading(false);
     };
 
     const handleDoctorDecision = (type, reason) => {
@@ -245,6 +250,7 @@ function App() {
 
     const handleSimulation = async (type) => {
         setError(null);
+        setSimLoading(true);
         try {
             const result = await simulateTreatment(
                 type,
@@ -255,6 +261,7 @@ function App() {
         } catch (err) {
             setError('Simulation failed: ' + (err.response?.data?.detail || err.message));
         }
+        setSimLoading(false);
     };
 
     const hemo = scanData?.baseline_hemodynamics;
@@ -377,29 +384,58 @@ function App() {
             <div style={{ padding: 20, maxWidth: 1600, margin: '0 auto' }}>
 
                 {/* ── TAB: DICOM View ────────────────────────────────────── */}
-                {activeTab === 'dicom' && (
-                    <div>
-                        <div style={{ ...panelStyle, padding: 16, marginBottom: 16 }}>
-                            <SectionHeader icon="⬜" title="DICOM Viewer" badge="MPR" />
-                            <p style={{ fontSize: 11, color: T.textSec, margin: '0 0 8px 0' }}>
-                                Multi-planar reconstruction from uploaded DICOM ZIP.
-                                Window/Level · Zoom · Pan · Scroll controls active.
-                            </p>
-                            {!file && (
-                                <div style={{ fontSize: 12, color: T.textMuted, padding: '8px 0' }}>
-                                    Upload a DICOM ZIP in the CTA Analysis tab to view slices here.
+                {activeTab === 'dicom' && (() => {
+                    const dicomSource = dicomFiles
+                        ?? (file?.name?.toLowerCase().endsWith('.zip') ? file : null);
+                    return (
+                        <div>
+                            <div style={{ ...panelStyle, padding: 16, marginBottom: 16 }}>
+                                <SectionHeader icon="⬜" title="DICOM Viewer" badge="MPR" />
+                                <p style={{ fontSize: 11, color: T.textSec, margin: '0 0 12px 0' }}>
+                                    Multi-planar reconstruction · Window/Level · Zoom · Pan · Scroll · Measurements
+                                </p>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                                    <div>
+                                        <label style={labelStyle}>Load DICOM Files</label>
+                                        <input
+                                            type="file"
+                                            multiple
+                                            accept=".dcm,.zip"
+                                            onChange={e => setDicomFiles(e.target.files.length > 0 ? Array.from(e.target.files) : null)}
+                                            style={{
+                                                fontSize: 12, color: T.textSec,
+                                                background: T.surface, border: `1px solid ${T.border}`,
+                                                borderRadius: 6, padding: '5px 10px',
+                                            }}
+                                        />
+                                        <p style={{ fontSize: 10, color: T.textMuted, margin: '4px 0 0 0' }}>
+                                            Single .dcm · Multiple .dcm (series) · .zip (DICOM archive)
+                                        </p>
+                                    </div>
+                                    {dicomFiles && (
+                                        <button onClick={() => setDicomFiles(null)} style={{
+                                            padding: '5px 12px', fontSize: 11, borderRadius: 4,
+                                            border: `1px solid ${T.border}`, background: 'transparent',
+                                            color: T.textSec, cursor: 'pointer', marginTop: 16,
+                                        }}>✕ Clear</button>
+                                    )}
                                 </div>
-                            )}
-                        </div>
-                        <Suspense fallback={
-                            <div style={{ ...panelStyle, padding: 40, textAlign: 'center', color: T.textMuted }}>
-                                Loading DICOM viewer…
+                                {!dicomSource && (
+                                    <div style={{ fontSize: 12, color: T.textMuted, marginTop: 8, paddingTop: 8, borderTop: `1px solid ${T.border}` }}>
+                                        No file loaded — use the uploader above or analyze a .zip in the CTA Analysis tab.
+                                    </div>
+                                )}
                             </div>
-                        }>
-                            <DicomViewer file={file?.name?.toLowerCase().endsWith('.zip') ? file : null} />
-                        </Suspense>
-                    </div>
-                )}
+                            <Suspense fallback={
+                                <div style={{ ...panelStyle, padding: 40, textAlign: 'center', color: T.textMuted }}>
+                                    Loading DICOM viewer…
+                                </div>
+                            }>
+                                <DicomViewer source={dicomSource} />
+                            </Suspense>
+                        </div>
+                    );
+                })()}
 
                 {/* ── TAB: CTA Analysis ──────────────────────────────────── */}
                 {activeTab === 'analysis' && (
@@ -414,7 +450,7 @@ function App() {
                                 <input
                                     type="file"
                                     onChange={e => setFile(e.target.files[0])}
-                                    accept=".zip,.nii,.nii.gz"
+                                    accept=".zip,.nii,.nii.gz,.dcm"
                                     style={{
                                         display: 'block',
                                         width: '100%', marginBottom: 8,
@@ -426,7 +462,7 @@ function App() {
                                     }}
                                 />
                                 <p style={{ fontSize: 10, color: T.textMuted, margin: '0 0 12px 0' }}>
-                                    .zip (DICOM series) · .nii.gz (NIfTI)
+                                    .zip (DICOM series) · .nii.gz (NIfTI) · .dcm (DICOM)
                                 </p>
                                 <button
                                     onClick={handleUpload}
@@ -659,90 +695,170 @@ function App() {
 
                         {/* RIGHT — results */}
                         <div>
-                            {riskData && (() => {
+                            {riskLoading && (
+                                <div style={{
+                                    ...panelStyle, padding: 40, textAlign: 'center',
+                                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 200,
+                                }}>
+                                    <div style={{ fontSize: 28, color: T.cyan, marginBottom: 12, animation: 'spin 1s linear infinite' }}>⟳</div>
+                                    <div style={{ color: T.textSec, fontSize: 13 }}>Calculating PHASES · UIATS · Synthesis…</div>
+                                </div>
+                            )}
+
+                            {riskData && !riskLoading && (() => {
                                 const ph = riskData.phases;
                                 const ui = riskData.uiats;
                                 const tierColor = { Low: T.green, Moderate: T.orange, High: T.red, 'Very High': T.red }[ph.risk_tier] || T.textSec;
                                 const tierDim   = { Low: T.greenDim, Moderate: T.orangeDim, High: T.redDim, 'Very High': T.redDim }[ph.risk_tier] || T.surface;
+                                const tierDesc  = {
+                                    Low: 'Annual rupture risk <0.5%. Conservative management appropriate if no high-risk features.',
+                                    Moderate: 'Annual rupture risk 0.5–1.5%. Individualized decision required — consider patient age, comorbidities, and aneurysm morphology.',
+                                    High: 'Annual rupture risk >1.5%. Treatment should be seriously considered. Discuss multidisciplinary team review.',
+                                    'Very High': 'Annual rupture risk >5%. Urgent treatment evaluation indicated.',
+                                }[ph.risk_tier] || '';
+                                const netColor = ui.net_score >= 2 ? T.orange : ui.net_score >= 0 ? T.cyan : T.green;
+                                // PHASES score bar (12 segments)
+                                const cappedScore = Math.min(ph.phases_score, 12);
                                 return (
                                     <>
-                                        {/* PHASES card */}
+                                        {/* ── PHASES Card ── */}
                                         <div style={{ ...panelStyle, padding: 20, borderColor: tierColor + '55', marginBottom: 12 }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
-                                                <SectionHeader icon="◎" title="PHASES Score" badge="Evidence A" />
-                                            </div>
-                                            <div style={{ display: 'flex', alignItems: 'flex-end', gap: 16, marginBottom: 12 }}>
+                                            <SectionHeader icon="◎" title="PHASES Score" badge="Evidence A · Greving 2014" />
+                                            <div style={{ display: 'flex', alignItems: 'flex-end', gap: 20, marginBottom: 14 }}>
                                                 <div>
-                                                    <div style={{ fontSize: 48, fontWeight: 900, lineHeight: 1, color: tierColor }}>
+                                                    <div style={{ fontSize: 52, fontWeight: 900, lineHeight: 1, color: tierColor }}>
                                                         {ph.five_year_rupture_risk_pct}
-                                                        <span style={{ fontSize: 20, fontWeight: 600 }}>%</span>
+                                                        <span style={{ fontSize: 22, fontWeight: 600 }}>%</span>
                                                     </div>
-                                                    <div style={{ fontSize: 11, color: T.textSec, marginTop: 2 }}>5-year rupture risk</div>
+                                                    <div style={{ fontSize: 11, color: T.textSec, marginTop: 3 }}>5-year rupture risk</div>
                                                 </div>
-                                                <div>
+                                                <div style={{ paddingBottom: 4 }}>
                                                     <div style={{
-                                                        display: 'inline-block', padding: '4px 14px',
+                                                        display: 'inline-block', padding: '5px 16px',
                                                         background: tierDim, borderRadius: 6,
-                                                        border: `1px solid ${tierColor}44`,
-                                                        fontSize: 13, fontWeight: 800, color: tierColor,
-                                                        marginBottom: 4,
+                                                        border: `1px solid ${tierColor}55`,
+                                                        fontSize: 14, fontWeight: 800, color: tierColor, marginBottom: 6,
                                                     }}>{ph.risk_tier}</div>
-                                                    <div style={{ fontSize: 11, color: T.textMuted }}>Score: {ph.phases_score} / 12+</div>
+                                                    <div style={{ fontSize: 11, color: T.textMuted }}>
+                                                        Score: <strong style={{ color: T.textPri }}>{ph.phases_score}</strong> / 12
+                                                    </div>
                                                 </div>
                                             </div>
-                                            <div style={{ fontSize: 11, color: T.textMuted }}>
-                                                {ph.citation}
+                                            {/* Score bar */}
+                                            <div style={{ display: 'flex', gap: 3, marginBottom: 10 }}>
+                                                {Array.from({ length: 12 }).map((_, i) => {
+                                                    const filled = i < cappedScore;
+                                                    const seg = i < 3 ? T.green : i < 6 ? T.orange : T.red;
+                                                    return (
+                                                        <div key={i} style={{
+                                                            flex: 1, height: 6, borderRadius: 2,
+                                                            background: filled ? seg : T.surface,
+                                                            border: `1px solid ${filled ? seg + '88' : T.border}`,
+                                                        }} />
+                                                    );
+                                                })}
                                             </div>
+                                            <div style={{ fontSize: 11, color: T.textSec, marginBottom: 8, lineHeight: 1.5 }}>
+                                                {tierDesc}
+                                            </div>
+                                            <div style={{ fontSize: 10, color: T.textMuted }}>{ph.citation}</div>
                                         </div>
 
-                                        {/* UIATS two-column card */}
+                                        {/* ── UIATS Card ── */}
                                         <div style={{ ...panelStyle, padding: 20, marginBottom: 12 }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
-                                                <SectionHeader icon="⊕" title="UIATS Score" badge="Evidence B" />
-                                            </div>
-                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 12 }}>
+                                            <SectionHeader icon="⊕" title="UIATS Score" badge="Evidence B · Etminan 2015" />
+                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 14 }}>
                                                 <div style={{ background: T.greenDim, borderRadius: 6, padding: '10px 14px', border: `1px solid ${T.green}33` }}>
-                                                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: T.green, marginBottom: 4 }}>Treat pts</div>
-                                                    <div style={{ fontSize: 30, fontWeight: 900, color: T.green }}>{ui.treatment_score}</div>
+                                                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: T.green, marginBottom: 4 }}>Treatment pts</div>
+                                                    <div style={{ fontSize: 32, fontWeight: 900, color: T.green }}>{ui.treatment_score}</div>
                                                 </div>
                                                 <div style={{ background: T.blueDim, borderRadius: 6, padding: '10px 14px', border: `1px solid ${T.blue}33` }}>
-                                                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: T.blue, marginBottom: 4 }}>Consv pts</div>
-                                                    <div style={{ fontSize: 30, fontWeight: 900, color: T.blue }}>{ui.conservative_score}</div>
+                                                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: T.blue, marginBottom: 4 }}>Conservative pts</div>
+                                                    <div style={{ fontSize: 32, fontWeight: 900, color: T.blue }}>{ui.conservative_score}</div>
                                                 </div>
-                                                <div style={{ background: T.surface, borderRadius: 6, padding: '10px 14px', border: `1px solid ${T.border}` }}>
-                                                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: T.textSec, marginBottom: 4 }}>Net</div>
-                                                    <div style={{ fontSize: 30, fontWeight: 900, color: ui.net_score >= 2 ? T.orange : ui.net_score >= 0 ? T.cyan : T.green }}>
+                                                <div style={{ background: T.surface, borderRadius: 6, padding: '10px 14px', border: `1px solid ${netColor}55` }}>
+                                                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: T.textSec, marginBottom: 4 }}>Net Score</div>
+                                                    <div style={{ fontSize: 32, fontWeight: 900, color: netColor }}>
                                                         {ui.net_score >= 0 ? '+' : ''}{ui.net_score}
                                                     </div>
                                                 </div>
                                             </div>
-                                            <div style={{ fontSize: 13, color: T.textSec, marginBottom: 4 }}>{ui.recommendation}</div>
-                                            <div style={{ fontSize: 11, color: T.textMuted }}>{ui.citation}</div>
-                                        </div>
-
-                                        {/* AI probability */}
-                                        <div style={{ ...panelStyle, padding: '12px 20px', marginBottom: 12 }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                                                <div>
-                                                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: T.textSec, marginBottom: 2 }}>AI Rupture Probability</div>
-                                                    <div style={{ fontSize: 28, fontWeight: 900, color: T.red }}>
-                                                        {(riskData.ai_rupture_probability * 100).toFixed(1)}%
+                                            <div style={{
+                                                fontSize: 13, fontWeight: 600, color: netColor,
+                                                marginBottom: 6, padding: '6px 10px',
+                                                background: netColor + '15', borderRadius: 4,
+                                                border: `1px solid ${netColor}33`,
+                                            }}>
+                                                {ui.recommendation}
+                                            </div>
+                                            {/* UIATS factor breakdown */}
+                                            {ui.breakdown && Object.keys(ui.breakdown).length > 0 && (
+                                                <div style={{ marginTop: 10 }}>
+                                                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: T.textSec, marginBottom: 6 }}>
+                                                        Contributing Factors
+                                                    </div>
+                                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                                                        {Object.entries(ui.breakdown).map(([key, pts]) => {
+                                                            if (pts === 0) return null;
+                                                            const isTreat = pts > 0;
+                                                            const label = key.replace(/_/g, ' ');
+                                                            return (
+                                                                <span key={key} style={{
+                                                                    padding: '2px 8px', borderRadius: 4, fontSize: 10, fontWeight: 600,
+                                                                    background: isTreat ? T.greenDim : T.blueDim,
+                                                                    color: isTreat ? T.green : T.blue,
+                                                                    border: `1px solid ${isTreat ? T.green : T.blue}33`,
+                                                                }}>
+                                                                    {isTreat ? '+' : ''}{pts} {label}
+                                                                </span>
+                                                            );
+                                                        })}
                                                     </div>
                                                 </div>
-                                                <div style={{ marginLeft: 'auto', textAlign: 'right' }}>
-                                                    <span style={{
-                                                        padding: '3px 10px', borderRadius: 4, fontSize: 10, fontWeight: 700,
-                                                        background: riskData.probability_source === 'rsna_2025' ? T.cyanDim : T.surface,
-                                                        color: riskData.probability_source === 'rsna_2025' ? T.cyan : T.textMuted,
-                                                        border: `1px solid ${riskData.probability_source === 'rsna_2025' ? T.cyan + '44' : T.border}`,
-                                                    }}>
-                                                        {riskData.probability_source === 'rsna_2025' ? 'RSNA 2025 · AUC 0.916' : 'Heuristic estimate'}
-                                                    </span>
-                                                </div>
+                                            )}
+                                            <div style={{ fontSize: 10, color: T.textMuted, marginTop: 8 }}>
+                                                Net ≥ +2 → treatment · −1 to +1 → individualized · ≤ −2 → conservative
                                             </div>
                                         </div>
 
-                                        {/* Clinical Decision */}
+                                        {/* ── AI Probability ── */}
+                                        <div style={{ ...panelStyle, padding: '14px 20px', marginBottom: 12 }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                                                <div>
+                                                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: T.textSec, marginBottom: 2 }}>
+                                                        AI Rupture Probability
+                                                    </div>
+                                                    <div style={{ fontSize: 30, fontWeight: 900, color: riskData.ai_rupture_probability > 0.5 ? T.red : T.orange }}>
+                                                        {(riskData.ai_rupture_probability * 100).toFixed(1)}%
+                                                    </div>
+                                                </div>
+                                                {riskData.synthesis?.preferred_modality && (
+                                                    <div style={{
+                                                        marginLeft: 'auto', padding: '6px 14px', borderRadius: 6,
+                                                        background: T.purpleDim, border: `1px solid ${T.purple}44`,
+                                                        textAlign: 'center',
+                                                    }}>
+                                                        <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: T.purple, marginBottom: 2 }}>
+                                                            Preferred Modality
+                                                        </div>
+                                                        <div style={{ fontSize: 12, fontWeight: 700, color: T.purple }}>
+                                                            {riskData.synthesis.preferred_modality}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                                <span style={{
+                                                    marginLeft: riskData.synthesis?.preferred_modality ? 0 : 'auto',
+                                                    padding: '3px 10px', borderRadius: 4, fontSize: 10, fontWeight: 700,
+                                                    background: riskData.probability_source === 'rsna_2025' ? T.cyanDim : T.surface,
+                                                    color: riskData.probability_source === 'rsna_2025' ? T.cyan : T.textMuted,
+                                                    border: `1px solid ${riskData.probability_source === 'rsna_2025' ? T.cyan + '44' : T.border}`,
+                                                }}>
+                                                    {riskData.probability_source === 'rsna_2025' ? 'RSNA 2025 · AUC 0.916' : 'Heuristic estimate'}
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        {/* ── Clinical Decision (doctor-in-the-loop) ── */}
                                         <ClinicalDecision
                                             synthesis={riskData.synthesis}
                                             decision={doctorDecision}
@@ -752,16 +868,25 @@ function App() {
                                 );
                             })()}
 
-                            {!riskData && (
+                            {!riskData && !riskLoading && (
                                 <div style={{
                                     ...panelStyle, padding: 40,
                                     textAlign: 'center', minHeight: 300,
                                     display: 'flex', flexDirection: 'column',
                                     alignItems: 'center', justifyContent: 'center',
                                 }}>
-                                    <div style={{ fontSize: 36, opacity: 0.15, marginBottom: 12 }}>◎</div>
-                                    <div style={{ color: T.textMuted, fontSize: 13 }}>
-                                        Complete the clinical form and click Calculate Risk Scores
+                                    <div style={{ fontSize: 36, opacity: 0.15, marginBottom: 16 }}>◎</div>
+                                    <div style={{ color: T.textSec, fontSize: 14, fontWeight: 600, marginBottom: 8 }}>
+                                        Risk Scoring Ready
+                                    </div>
+                                    <div style={{ color: T.textMuted, fontSize: 12, lineHeight: 1.7, maxWidth: 340 }}>
+                                        Fill the clinical form and click <strong style={{ color: T.cyan }}>Calculate Risk Scores</strong>
+                                        {' '}to compute PHASES (Evidence A) and UIATS (Evidence B) scores with an integrated AI recommendation.
+                                        {!martaResult && (
+                                            <div style={{ marginTop: 10, padding: '8px 12px', background: T.surface, borderRadius: 6, border: `1px solid ${T.border}` }}>
+                                                Tip: Complete the MARTA Assessment first to include procedural risk in the synthesis.
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             )}
@@ -908,128 +1033,208 @@ function App() {
 
                 {/* ── TAB: Treatment Simulation ──────────────────────────────── */}
                 {activeTab === 'treatment' && (
-                    <div style={{ display: 'grid', gridTemplateColumns: '300px 1fr', gap: 16, alignItems: 'start' }}>
-                        <div style={{ ...panelStyle, padding: 20 }}>
-                            <SectionHeader icon="⚙" title="Flow Visualization Estimate" />
-                            {scanData ? (
-                                <>
-                                    <p style={{ fontSize: 12, color: T.textSec, margin: '0 0 8px 0' }}>
-                                        Computational flow proxy after device placement.
-                                    </p>
-                                    <p style={{ fontSize: 11, color: T.textMuted, margin: '0 0 16px 0',
-                                        padding: '6px 8px', background: T.surface, borderRadius: 4,
-                                        border: `1px solid ${T.border}`,
-                                    }}>
-                                        ⚠ WSS values are distance-based proxies, not validated CFD.
-                                    </p>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                                        <button
-                                            onClick={() => handleSimulation('flow_diverter')}
-                                            style={{
-                                                ...btnBase, width: '100%', padding: '12px',
-                                                background: `linear-gradient(90deg, ${T.purple}, #9333ea)`,
-                                                color: '#fff', fontSize: 12,
-                                            }}
-                                        >
-                                            ◈  Simulate Flow Diverter
-                                        </button>
-                                        <button
-                                            onClick={() => handleSimulation('surgical_clip')}
-                                            style={{
-                                                ...btnBase, width: '100%', padding: '12px',
-                                                background: `linear-gradient(90deg, ${T.green}, #059669)`,
-                                                color: '#fff', fontSize: 12,
-                                            }}
-                                        >
-                                            ✂  Simulate Surgical Clip
-                                        </button>
-                                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr', gap: 16, alignItems: 'start' }}>
+                        {/* LEFT — device selection */}
+                        <div>
+                            <div style={{ ...panelStyle, padding: 20 }}>
+                                <SectionHeader icon="⚙" title="Treatment Simulation" />
+                                {scanData ? (
+                                    <>
+                                        <p style={{ fontSize: 12, color: T.textSec, margin: '0 0 14px 0', lineHeight: 1.6 }}>
+                                            Hemodynamic flow proxy estimating post-device WSS and OSI changes.
+                                        </p>
 
-                                    {/* Baseline stats */}
-                                    {hemo && (
-                                        <div style={{ marginTop: 20 }}>
-                                            <div style={{ ...labelStyle, marginBottom: 10 }}>Baseline Values</div>
-                                            <div style={{ display: 'grid', gap: 8 }}>
-                                                <MetricPill label="Mean WSS" value={hemo.mean_wss_pa} unit="Pa" accent={T.cyan} />
-                                                <MetricPill label="Mean OSI" value={hemo.mean_osi} />
-                                            </div>
+                                        {/* Device cards */}
+                                        {[
+                                            {
+                                                type: 'flow_diverter',
+                                                icon: '◈',
+                                                name: 'Flow Diverter',
+                                                desc: 'PED / FRED / SILK — endoluminal mesh device reducing intra-aneurysmal flow by 60–80%. First-line for large/giant aneurysms.',
+                                                accent: T.purple,
+                                                accentDim: T.purpleDim,
+                                            },
+                                            {
+                                                type: 'surgical_clip',
+                                                icon: '✂',
+                                                name: 'Surgical Clip',
+                                                desc: 'Microsurgical clipping — direct neck occlusion. Definitive treatment with immediate aneurysm exclusion. Preferred for MCA and complex morphology.',
+                                                accent: T.green,
+                                                accentDim: T.greenDim,
+                                            },
+                                        ].map(({ type, icon, name, desc, accent, accentDim }) => (
+                                            <button
+                                                key={type}
+                                                onClick={() => handleSimulation(type)}
+                                                disabled={simLoading}
+                                                style={{
+                                                    width: '100%', marginBottom: 10,
+                                                    background: accentDim, border: `1px solid ${accent}44`,
+                                                    borderRadius: 8, padding: '12px 14px',
+                                                    cursor: simLoading ? 'not-allowed' : 'pointer',
+                                                    textAlign: 'left', opacity: simLoading ? 0.6 : 1,
+                                                    transition: 'border-color 0.15s',
+                                                }}
+                                            >
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 5 }}>
+                                                    <span style={{ fontSize: 16, color: accent }}>{icon}</span>
+                                                    <span style={{ fontSize: 13, fontWeight: 700, color: accent }}>
+                                                        {simLoading ? '⟳ Simulating…' : name}
+                                                    </span>
+                                                </div>
+                                                <div style={{ fontSize: 11, color: T.textSec, lineHeight: 1.5 }}>{desc}</div>
+                                            </button>
+                                        ))}
+
+                                        <div style={{
+                                            marginTop: 4, padding: '7px 10px', borderRadius: 6,
+                                            background: T.surface, border: `1px solid ${T.border}`,
+                                            fontSize: 10, color: T.textMuted, lineHeight: 1.6,
+                                        }}>
+                                            ⚠ WSS/OSI values are geometry-based proxies, not patient-specific CFD.
+                                            For research and planning support only — not for standalone clinical decisions.
                                         </div>
-                                    )}
-                                </>
-                            ) : (
-                                <div style={{
-                                    padding: 20, textAlign: 'center',
-                                    background: T.surface, borderRadius: 6,
-                                    border: `1px dashed ${T.border}`,
-                                    color: T.textMuted, fontSize: 13,
-                                }}>
-                                    Analyze a CTA scan first to enable treatment simulation
+                                    </>
+                                ) : (
+                                    <div style={{
+                                        padding: 24, textAlign: 'center',
+                                        background: T.surface, borderRadius: 6,
+                                        border: `1px dashed ${T.border}`,
+                                        color: T.textMuted, fontSize: 13,
+                                    }}>
+                                        Analyze a CTA scan first to enable treatment simulation
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Baseline hemodynamics */}
+                            {hemo && (
+                                <div style={{ ...panelStyle, padding: 16 }}>
+                                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: T.textSec, marginBottom: 12 }}>
+                                        Baseline Hemodynamics
+                                    </div>
+                                    <div style={{ display: 'grid', gap: 8 }}>
+                                        <MetricPill label="Mean WSS" value={hemo.mean_wss_pa} unit="Pa" accent={T.cyan} />
+                                        <MetricPill label="Max WSS" value={hemo.max_wss_pa} unit="Pa" accent={hemo.max_wss_pa > 10 ? T.red : undefined} />
+                                        <MetricPill label="Min WSS" value={hemo.min_wss_pa} unit="Pa" />
+                                        <MetricPill label="Mean OSI" value={hemo.mean_osi} />
+                                    </div>
+                                    {/* WSS reference guide */}
+                                    <div style={{ marginTop: 12, fontSize: 10, color: T.textMuted, lineHeight: 1.7 }}>
+                                        <div style={{ fontWeight: 700, color: T.textSec, marginBottom: 3 }}>WSS Reference (aneurysm sac)</div>
+                                        <div><span style={{ color: T.green }}>●</span> &lt; 2 Pa — Low (low-flow aneurysm)</div>
+                                        <div><span style={{ color: T.cyan }}>●</span> 2–10 Pa — Physiologic range</div>
+                                        <div><span style={{ color: T.orange }}>●</span> &gt; 10 Pa — High (rupture-associated)</div>
+                                        <div style={{ marginTop: 4 }}>OSI &gt; 0.3 → oscillatory shear stress risk</div>
+                                    </div>
                                 </div>
                             )}
                         </div>
 
-                        {simulation && (
+                        {/* RIGHT — simulation results */}
+                        {simLoading && (
+                            <div style={{
+                                ...panelStyle, padding: 40, textAlign: 'center',
+                                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 300,
+                            }}>
+                                <div style={{ fontSize: 28, color: T.cyan, marginBottom: 12 }}>⟳</div>
+                                <div style={{ color: T.textSec, fontSize: 13 }}>Running hemodynamic simulation…</div>
+                            </div>
+                        )}
+
+                        {simulation && !simLoading && (
                             <div>
-                                <div style={{ ...panelStyle, padding: 20 }}>
+                                <div style={{ ...panelStyle, padding: 20, marginBottom: 12 }}>
                                     <SectionHeader icon="◉" title="Post-Treatment Flow Estimate" />
 
-                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 16 }}>
-                                        <MetricPill label="Post WSS Mean" value={simulation.mean_wss_pa} unit="Pa" accent={T.cyan} />
-                                        <MetricPill label="Post WSS Max" value={simulation.max_wss_pa} unit="Pa" />
-                                        <MetricPill label="Post OSI" value={simulation.mean_osi} />
-                                    </div>
-
-                                    {/* Delta indicators */}
+                                    {/* Pre / Post comparison table */}
                                     {hemo && (
-                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10, marginBottom: 16 }}>
-                                            {[
-                                                { label: 'WSS Change', pre: hemo.mean_wss_pa, post: simulation.mean_wss_pa },
-                                                { label: 'OSI Change', pre: hemo.mean_osi, post: simulation.mean_osi },
-                                            ].map(({ label, pre, post }) => {
-                                                const delta = ((post - pre) / Math.abs(pre) * 100).toFixed(1);
-                                                const isDown = post < pre;
-                                                return (
-                                                    <div key={label} style={{
-                                                        background: T.surface,
-                                                        border: `1px solid ${isDown ? T.green + '44' : T.red + '44'}`,
-                                                        borderRadius: 6, padding: '10px 14px',
-                                                    }}>
-                                                        <div style={{ ...labelStyle }}>{label}</div>
-                                                        <div style={{ fontSize: 22, fontWeight: 800, color: isDown ? T.green : T.red }}>
-                                                            {isDown ? '▼' : '▲'} {Math.abs(delta)}%
-                                                        </div>
-                                                    </div>
-                                                );
-                                            })}
+                                        <div style={{ marginBottom: 16, overflowX: 'auto' }}>
+                                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                                                <thead>
+                                                    <tr style={{ borderBottom: `1px solid ${T.border}` }}>
+                                                        {['Metric', 'Baseline', 'Post-Treatment', 'Change'].map(h => (
+                                                            <th key={h} style={{
+                                                                padding: '7px 10px', textAlign: h === 'Baseline' || h === 'Post-Treatment' || h === 'Change' ? 'right' : 'left',
+                                                                color: T.textSec, fontWeight: 600, fontSize: 10,
+                                                                textTransform: 'uppercase', letterSpacing: '0.08em',
+                                                            }}>{h}</th>
+                                                        ))}
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {[
+                                                        { label: 'Mean WSS (Pa)', pre: hemo.mean_wss_pa, post: simulation.mean_wss_pa },
+                                                        { label: 'Max WSS (Pa)', pre: hemo.max_wss_pa, post: simulation.max_wss_pa },
+                                                        { label: 'Mean OSI', pre: hemo.mean_osi, post: simulation.mean_osi },
+                                                    ].map(({ label, pre, post }) => {
+                                                        const delta = ((post - pre) / Math.abs(pre || 1) * 100).toFixed(1);
+                                                        const isDown = post < pre;
+                                                        // For WSS, down is good; for OSI, down is also good
+                                                        const changeColor = isDown ? T.green : T.red;
+                                                        return (
+                                                            <tr key={label} style={{ borderBottom: `1px solid ${T.borderSub}` }}>
+                                                                <td style={{ padding: '9px 10px', color: T.textSec }}>{label}</td>
+                                                                <td style={{ padding: '9px 10px', textAlign: 'right', color: T.textPri, fontWeight: 600 }}>
+                                                                    {typeof pre === 'number' ? pre.toFixed(3) : pre}
+                                                                </td>
+                                                                <td style={{ padding: '9px 10px', textAlign: 'right', color: T.cyan, fontWeight: 700 }}>
+                                                                    {typeof post === 'number' ? post.toFixed(3) : post}
+                                                                </td>
+                                                                <td style={{ padding: '9px 10px', textAlign: 'right', fontWeight: 700, color: changeColor }}>
+                                                                    {isDown ? '▼' : '▲'} {Math.abs(delta)}%
+                                                                </td>
+                                                            </tr>
+                                                        );
+                                                    })}
+                                                </tbody>
+                                            </table>
                                         </div>
                                     )}
 
+                                    {/* Post-treatment metrics pills */}
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 16 }}>
+                                        <MetricPill label="Post WSS Mean" value={simulation.mean_wss_pa} unit="Pa" accent={T.cyan} />
+                                        <MetricPill label="Post WSS Max" value={simulation.max_wss_pa} unit="Pa" accent={simulation.max_wss_pa > 10 ? T.red : undefined} />
+                                        <MetricPill label="Post OSI" value={simulation.mean_osi} accent={simulation.mean_osi > 0.3 ? T.orange : undefined} />
+                                    </div>
+
+                                    {/* Clinical outcome */}
                                     <div style={{
                                         padding: '14px 16px',
                                         background: T.greenDim,
                                         border: `1px solid ${T.green}44`,
                                         borderRadius: 8,
                                     }}>
-                                        <div style={{ ...labelStyle, color: T.green, marginBottom: 6 }}>Clinical Outcome Prediction</div>
+                                        <div style={{ ...labelStyle, color: T.green, marginBottom: 6 }}>
+                                            Clinical Outcome Prediction
+                                        </div>
                                         <p style={{ margin: 0, fontSize: 13, color: '#a7f3d0', lineHeight: 1.6 }}>
                                             {simulation.clinical_outcome}
+                                        </p>
+                                        <p style={{ margin: '10px 0 0 0', fontSize: 10, color: T.textMuted, lineHeight: 1.5 }}>
+                                            Outcome based on published device efficacy data. Individual results vary by aneurysm morphology,
+                                            device sizing, and operator experience. Not a substitute for multidisciplinary case review.
                                         </p>
                                     </div>
                                 </div>
                             </div>
                         )}
 
-                        {!simulation && scanData && (
+                        {!simulation && !simLoading && scanData && (
                             <div style={{
-                                ...panelStyle, padding: 24,
+                                ...panelStyle, padding: 40,
                                 textAlign: 'center',
                                 display: 'flex', flexDirection: 'column',
                                 alignItems: 'center', justifyContent: 'center',
                                 minHeight: 300,
                             }}>
-                                <div style={{ fontSize: 40, opacity: 0.15, marginBottom: 12 }}>⚙</div>
-                                <div style={{ color: T.textMuted, fontSize: 13 }}>
-                                    Select a treatment type to run simulation
+                                <div style={{ fontSize: 40, opacity: 0.15, marginBottom: 16 }}>⚙</div>
+                                <div style={{ color: T.textSec, fontSize: 14, fontWeight: 600, marginBottom: 8 }}>
+                                    Select a Treatment Device
+                                </div>
+                                <div style={{ color: T.textMuted, fontSize: 12, lineHeight: 1.6, maxWidth: 320 }}>
+                                    Choose Flow Diverter or Surgical Clip to estimate post-treatment hemodynamic changes based on the baseline scan analysis.
                                 </div>
                             </div>
                         )}
