@@ -1,0 +1,3 @@
+[submodule "neuropredict_ai/vendor/rsna2025"]
+	path = neuropredict_ai/vendor/rsna2025
+	url = https://github.com/uchiyama33/rsna2025_1st_place.git

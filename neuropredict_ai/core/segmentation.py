@@ -1,70 +1,50 @@
-import numpy as np
+"""
+Segmentation module — delegates to the RSNA 2025 1st place pipeline.
 
-try:
-    import torch
-    from monai.networks.nets import UNet
-    _HAS_TORCH = True
-except ImportError:
-    _HAS_TORCH = False
+Replaces the previous MONAI U-Net placeholder with the real uchiyama33 model
+(AUC 0.916) via the RSNAPipeline adapter singleton.
+
+The predict() interface accepts a DICOM series directory path (str) and returns
+a structured dict compatible with the /analyze_and_mesh response schema.
+"""
+
+from __future__ import annotations
+
+from core.rsna_pipeline import RSNAPipeline, rsna_pipeline
 
 
 class AneurysmSegmentationModel:
-    def __init__(self, model_weights_path: str = None):
-        if _HAS_TORCH:
-            self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-            self.model = UNet(
-                spatial_dims=3,
-                in_channels=1,
-                out_channels=2,
-                channels=(16, 32, 64, 128, 256),
-                strides=(2, 2, 2, 2),
-                num_res_units=2,
-            ).to(self.device)
+    """
+    Thin shim that delegates prediction to RSNAPipeline.
 
-            if model_weights_path:
-                self.model.load_state_dict(
-                    torch.load(model_weights_path, map_location=self.device)
-                )
-            self.model.eval()
-        else:
-            self.model = None
-            self.device = None
+    This class preserves the module-level singleton pattern used throughout
+    NeuroPredict (imported as `from core.segmentation import segmentation_model`)
+    while the actual inference is handled by the RSNA pipeline.
+    """
 
-    def predict(self, input_data) -> np.ndarray:
+    def predict(self, series_path: str) -> dict:
         """
-        Runs inference on the preprocessed 3D CT volume.
-        Falls back to synthetic mask when PyTorch is not available.
+        Run the full RSNA 2025 three-stage pipeline on a DICOM series directory.
+
+        Args:
+            series_path: Path to a directory containing .dcm files for one CTA series,
+                         OR a directory containing a scan_0000.nii.gz file (NIfTI path).
+
+        Returns:
+            {
+                "aneurysm_probability": float,
+                "aneurysm_detected": bool,
+                "location_probabilities": dict[str, float],  # 13 anatomical locations
+                "top_location": str,
+                "pipeline": str,  # "rsna_2025", "unavailable", or "error"
+            }
         """
-        if self.model is not None and _HAS_TORCH:
-            if isinstance(input_data, np.ndarray):
-                input_tensor = torch.tensor(input_data, dtype=torch.float32)
-            else:
-                input_tensor = input_data
-            input_tensor = input_tensor.to(self.device)
-            if input_tensor.dim() < 5:
-                input_tensor = input_tensor.unsqueeze(0)
-            with torch.no_grad():
-                output = self.model(input_tensor)
-                probabilities = torch.softmax(output, dim=1)
-                predicted_mask = (
-                    torch.argmax(probabilities, dim=1).squeeze(0).cpu().numpy()
-                )
-            return predicted_mask
+        return rsna_pipeline.predict_from_dicom_dir(series_path)
 
-        # Lightweight fallback: produce a synthetic aneurysm blob
-        if hasattr(input_data, 'numpy'):
-            shape = input_data.squeeze(0).shape
-        elif isinstance(input_data, np.ndarray):
-            shape = input_data.squeeze(0).shape if input_data.ndim == 4 else input_data.shape
-        else:
-            shape = (64, 64, 64)
-
-        mask = np.zeros(shape, dtype=np.uint8)
-        # Place a synthetic aneurysm blob in the centre
-        s = [slice(d // 4, d // 4 + d // 2) for d in shape]
-        mask[tuple(s)] = 1
-        return mask
+    @property
+    def is_available(self) -> bool:
+        return rsna_pipeline.is_available
 
 
-# Singleton instance for the FastAPI app
+# Module-level singleton — keeps backward-compatible import pattern
 segmentation_model = AneurysmSegmentationModel()

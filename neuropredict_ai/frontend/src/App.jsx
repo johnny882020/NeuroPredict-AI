@@ -76,7 +76,7 @@ function App() {
         if (!scanData) return;
         setError(null);
         try {
-            const result = await predictRisk(clinical, scanData.morphology);
+            const result = await predictRisk(clinical, scanData.morphology, scanData.aneurysm_probability);
             setRiskData(result);
         } catch (err) {
             setError('Risk prediction failed: ' + (err.response?.data?.detail || err.message));
@@ -142,8 +142,9 @@ function App() {
                     <div style={{ ...CARD, marginBottom: '20px' }}>
                         <h3 style={{ margin: '0 0 12px 0', fontSize: '16px', color: '#1e40af' }}>1. Automated Aneurysm Analysis</h3>
                         <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
-                            <input type="file" onChange={(e) => setFile(e.target.files[0])} accept="*"
+                            <input type="file" onChange={(e) => setFile(e.target.files[0])} accept=".zip,.nii,.nii.gz"
                                 style={{ fontSize: '14px', color: '#475569', minWidth: 0, flex: '1 1 180px' }} />
+                            <span style={{ fontSize: 11, color: '#94a3b8', flex: '1 1 100%', marginTop: -6 }}>Upload .zip (DICOM series) or .nii.gz (NIfTI)</span>
                             <button onClick={handleUpload} disabled={!file || loading}
                                 style={{
                                     background: (!file || loading) ? '#94a3b8' : '#2563eb',
@@ -157,6 +158,51 @@ function App() {
 
                     {scanData && scanData.aneurysm_detected && (
                         <>
+                            {/* RSNA 2025 AI Detection Result — AUC 0.916 */}
+                            <div style={{
+                                ...CARD, marginBottom: '20px',
+                                background: scanData.aneurysm_probability > 0.5 ? '#fef2f2' : '#f0fdf4',
+                                borderColor: scanData.aneurysm_probability > 0.5 ? '#fecaca' : '#bbf7d0',
+                            }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+                                    <div>
+                                        <h3 style={{ margin: '0 0 2px 0', fontSize: 16, color: '#1e40af' }}>AI Aneurysm Detection</h3>
+                                        <p style={{ margin: 0, fontSize: 11, color: '#64748b' }}>RSNA 2025 Model · AUC 0.916 · {scanData.pipeline === 'rsna_2025' ? 'Live Model' : 'Fallback'}</p>
+                                    </div>
+                                    <div style={{ textAlign: 'right' }}>
+                                        <div style={{ fontSize: 28, fontWeight: 700, color: scanData.aneurysm_probability > 0.5 ? '#dc2626' : '#16a34a' }}>
+                                            {(scanData.aneurysm_probability * 100).toFixed(1)}%
+                                        </div>
+                                        <div style={{ fontSize: 12, color: '#64748b' }}>aneurysm probability</div>
+                                    </div>
+                                </div>
+                                <div style={{ marginTop: 10, height: 6, background: '#e2e8f0', borderRadius: 3, overflow: 'hidden' }}>
+                                    <div style={{
+                                        width: `${scanData.aneurysm_probability * 100}%`, height: '100%',
+                                        background: scanData.aneurysm_probability > 0.5 ? '#dc2626' : '#16a34a',
+                                        borderRadius: 3, transition: 'width 0.6s ease',
+                                    }} />
+                                </div>
+                                {scanData.location_probabilities && (
+                                    <div style={{ marginTop: 14 }}>
+                                        <p style={{ margin: '0 0 6px 0', fontSize: 11, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Top Location Probabilities</p>
+                                        {Object.entries(scanData.location_probabilities)
+                                            .sort(([, a], [, b]) => b - a).slice(0, 5)
+                                            .map(([loc, prob]) => (
+                                                <div key={loc} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 5 }}>
+                                                    <span style={{ fontSize: 12, color: '#475569', minWidth: 230, flexShrink: 0 }}>{loc}</span>
+                                                    <div style={{ flex: 1, height: 4, background: '#e2e8f0', borderRadius: 2, overflow: 'hidden' }}>
+                                                        <div style={{ width: `${prob * 100}%`, height: '100%', background: '#2563eb', borderRadius: 2 }} />
+                                                    </div>
+                                                    <span style={{ fontSize: 12, fontWeight: 600, color: '#1e293b', minWidth: 38, textAlign: 'right' }}>
+                                                        {(prob * 100).toFixed(1)}%
+                                                    </span>
+                                                </div>
+                                            ))}
+                                    </div>
+                                )}
+                            </div>
+
                             {/* 3D Viewer with WSS */}
                             <div style={{ ...CARD, marginBottom: '20px' }}>
                                 <h3 style={{ margin: '0 0 12px 0', fontSize: '16px', color: '#1e40af' }}>3D Aneurysm Morphology</h3>

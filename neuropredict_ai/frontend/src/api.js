@@ -11,8 +11,9 @@ export const uploadScan = async (file) => {
     return response.data;
 };
 
-export const predictRisk = async (clinicalData, morphData) => {
-    const response = await axios.post(`${API_BASE}/predict_risk`, {
+export const predictRisk = async (clinicalData, morphData, rsnaProbability = null) => {
+    const params = rsnaProbability !== null ? `?rsna_probability=${rsnaProbability}` : '';
+    const response = await axios.post(`${API_BASE}/predict_risk${params}`, {
         clinical: clinicalData,
         morph: morphData
     });
