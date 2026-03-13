@@ -56,6 +56,9 @@ async function sortDcmFilesByInstance(files) {
 async function resolveImageIds(source) {
     if (!source) return { ids: [], blobUrls: [] };
 
+    // Unwrap single-item array (e.g. when a .zip is selected via file input)
+    if (Array.isArray(source) && source.length === 1) source = source[0];
+
     const isArray = Array.isArray(source);
     const singleFile = !isArray ? source : null;
 
