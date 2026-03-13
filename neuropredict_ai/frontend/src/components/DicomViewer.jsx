@@ -22,6 +22,7 @@ const VIEWPORT_LABELS = { axial: 'VIEW A', sagittal: 'VIEW B', coronal: 'VIEW C'
 let csCore = null;
 let csTools = null;
 let dicomImageLoader = null;
+let csInitialized = false;
 
 async function loadCornerstoneModules() {
     if (csCore) return;
@@ -230,10 +231,12 @@ export default function DicomViewer({ source }) {
             try {
                 await loadCornerstoneModules();
 
-                await csCore.init();
-                await csTools.init();
-
-                dicomImageLoader.wadouri.register(csCore);
+                if (!csInitialized) {
+                    await csCore.init();
+                    await csTools.init();
+                    dicomImageLoader.wadouri.register(csCore);
+                    csInitialized = true;
+                }
 
                 // Register all tools (catch if already registered)
                 const {
