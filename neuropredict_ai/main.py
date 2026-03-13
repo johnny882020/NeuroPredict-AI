@@ -1,3 +1,4 @@
+import logging
 import shutil
 import tempfile
 from pathlib import Path
@@ -103,18 +104,19 @@ async def analyze_scan(file: UploadFile = File(...)):
     # 2. Resolve a series directory path for the RSNA pipeline
     series_dir: str
     tmp_nifti_dir: Optional[str] = None
+    # For DICOM mode, load volume into memory now (before cleanup) for morphology
+    dicom_volume: Optional[np.ndarray] = None
 
     if mode == "dicom_dir":
         series_dir = data  # already an extracted DICOM directory
+        try:
+            dicom_volume = load_dicom_volume(series_dir)
+        except Exception as exc:
+            logging.getLogger(__name__).warning("Could not load DICOM volume for morphology: %s", exc)
     else:
         # NIfTI mode: write volume to a temp dir as scan_0000.nii.gz
         tmp_nifti_dir = tempfile.mkdtemp(prefix="neuropredict_nii_")
         series_dir = write_nifti_for_pipeline(data, Path(tmp_nifti_dir))
-
-    # Load DICOM volume for mesh generation before temp dir is cleaned up
-    dicom_volume: Optional[np.ndarray] = None
-    if mode == "dicom_dir":
-        dicom_volume = load_dicom_volume(series_dir)
 
     # 3. Run the RSNA three-stage pipeline
     try:
