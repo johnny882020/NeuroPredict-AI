@@ -82,11 +82,12 @@ def load_nifti_volume(file_bytes: bytes) -> np.ndarray:
 
 def load_dicom_volume(series_dir: Union[str, Path]) -> Optional[np.ndarray]:
     """
-    Load a DICOM series directory into a 3D float32 numpy array (HU values).
+    Load a DICOM series directory into a 3D float16 numpy array (HU values).
 
     Slices are sorted by InstanceNumber tag. Returns None if pydicom is
     unavailable, the directory has no .dcm files, or pixel arrays cannot be
     stacked (e.g. variable matrix sizes).
+    float16 is used to keep peak RAM under 512 MB on Render free tier.
     """
     if not _HAS_PYDICOM:
         return None
@@ -110,7 +111,7 @@ def load_dicom_volume(series_dir: Union[str, Path]) -> Optional[np.ndarray]:
     slices.sort(key=lambda s: int(getattr(s, "InstanceNumber", 0)))
 
     try:
-        volume = np.stack([s.pixel_array for s in slices], axis=0).astype(np.float32)
+        volume = np.stack([s.pixel_array for s in slices], axis=0).astype(np.float16)
     except Exception as exc:
         log.warning("load_dicom_volume: could not stack pixel arrays: %s", exc)
         return None
